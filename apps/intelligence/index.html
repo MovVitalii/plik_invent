@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Material Intelligence Center · Outbound Pack Online</title>
+<script src="vendor/xlsx.full.min.js"></script>
+    <script src="vendor/chart.umd.js"></script>
+
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+<header class="header">
+    <div class="header-left">
+        <div class="logo">
+            <div class="logo-badge">H&amp;M</div>
+
+            <div class="logo-text">
+                <h1>Material Intelligence Center</h1>
+                <span>Outbound Pack Online</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-center">
+        <span id="loadedFile">Nie załadowano pliku</span>
+    </div>
+
+    <div class="header-right">
+        <button class="btn primary" id="btnLoadExcel" type="button">
+            📂 Wczytaj Excel
+        </button>
+
+        <button class="btn" id="btnExportFiltered" type="button" disabled>
+            ⬇ Eksport CSV
+        </button>
+
+        <button class="btn" id="btnExportWorkspace" type="button" disabled>
+            💾 Eksport ustawień
+        </button>
+
+        <button class="btn" id="btnImportWorkspace" type="button">
+            📥 Import ustawień
+        </button>
+
+        <button class="btn" id="btnPrint" type="button">
+            🖨 Drukuj
+        </button>
+    </div>
+</header>
+
+<input
+    type="file"
+    id="fileInput"
+    accept=".xlsx,.xls,.xlsm,.csv,.tsv,.ods"
+    hidden
+>
+
+<input
+    type="file"
+    id="workspaceImportInput"
+    accept=".json"
+    hidden
+>
+
+<section id="uploadScreen">
+    <div class="uploadCard">
+        <div class="uploadEyebrow">Outbound Pack Online</div>
+
+        <h2>Material Intelligence Center</h2>
+
+        <p>
+            Analiza zużycia materiałów, stanów magazynowych,
+            ryzyka braków i prognoz sezonowych.
+        </p>
+
+        <div class="dropZone" id="dropZone">
+            <div class="dropIcon">📦</div>
+            <div class="dropHeadline">Przeciągnij raport Excel tutaj</div>
+            <div class="dropText">albo kliknij, aby wybrać plik</div>
+            <div class="dropFormats">.xlsx · .xls · .xlsm · .csv · .tsv · .ods</div>
+        </div>
+
+        <div class="uploadNote">
+            Dane są analizowane lokalnie w przeglądarce.
+        </div>
+    </div>
+</section>
+
+<main id="app" class="app" hidden>
+
+    <section class="infoBar">
+        <div class="infoItem">
+            <span>📄 Plik</span>
+            <strong id="infoFile">—</strong>
+        </div>
+
+        <div class="infoItem">
+            <span>Wiersze</span>
+            <strong id="infoRows">—</strong>
+        </div>
+
+        <div class="infoItem">
+            <span>Kolumny</span>
+            <strong id="infoCols">—</strong>
+        </div>
+
+        <div class="infoItem infoSheet">
+            <label for="sheetSelect">Arkusz</label>
+            <select id="sheetSelect" disabled>
+                <option>—</option>
+            </select>
+        </div>
+
+        <div class="infoItem infoStatus">
+            <span id="dataStatus">Oczekiwanie na dane</span>
+        </div>
+    </section>
+
+    <nav class="tabs" aria-label="Nawigacja aplikacji">
+        <button class="tab active" type="button" data-tab="dashboard">
+            📊 Dashboard
+        </button>
+
+        <button class="tab" type="button" data-tab="mapping">
+            ⚙️ Mapowanie kolumn
+        </button>
+
+        <button class="tab" type="button" data-tab="analytics">
+            🔎 Analiza
+        </button>
+
+        <button class="tab" type="button" data-tab="forecast">
+            📅 Prognoza
+        </button>
+
+        <button class="tab" type="button" data-tab="table">
+            📋 Tabela
+        </button>
+    </nav>
+
+    <section id="tab-dashboard" class="tabContent active">
+
+        <div id="mappingWarning" class="notice warning" hidden>
+            <strong>Wymagane jest mapowanie kolumn.</strong>
+            Przejdź do zakładki „Mapowanie kolumn”, aby wskazać dane źródłowe.
+        </div>
+
+        <section id="dashboardEmptyState" class="emptyState" hidden>
+            <div class="emptyIcon">📊</div>
+            <h2>Brak danych do dashboardu</h2>
+            <p>
+                Wskaż co najmniej kolumny: Materiał oraz Zużycie.
+            </p>
+            <button class="btn primary" type="button" data-open-tab="mapping">
+                Otwórz mapowanie kolumn
+            </button>
+        </section>
+
+        <div id="dashboardContent">
+
+            <section class="filterPanel" aria-label="Filtry dashboardu">
+                <div class="filter">
+                    <label for="filterDateFrom">Data od</label>
+                    <input id="filterDateFrom" type="date">
+                </div>
+
+                <div class="filter">
+                    <label for="filterDateTo">Data do</label>
+                    <input id="filterDateTo" type="date">
+                </div>
+
+                <div class="filter">
+                    <label for="filterMaterial">Materiał</label>
+                    <select id="filterMaterial" disabled>
+                        <option value="">Wszystkie</option>
+                    </select>
+                </div>
+
+                <div class="filter">
+                    <label for="filterType">Typ materiału</label>
+                    <select id="filterType" disabled>
+                        <option value="">Wszystkie</option>
+                    </select>
+                </div>
+
+                <div class="filter">
+                    <label for="filterBrand">Marka</label>
+                    <select id="filterBrand" disabled>
+                        <option value="">Wszystkie</option>
+                    </select>
+                </div>
+
+                <div class="filter">
+                    <label for="filterProduct">Produkt</label>
+                    <select id="filterProduct" disabled>
+                        <option value="">Wszystkie</option>
+                    </select>
+                </div>
+
+                <div class="filter">
+                    <label for="filterSeason">Sezon</label>
+                    <select id="filterSeason">
+                        <option value="">Wszystkie</option>
+                        <option value="Winter">Zima</option>
+                        <option value="Spring">Wiosna</option>
+                        <option value="Summer">Lato</option>
+                        <option value="Autumn">Jesień</option>
+                    </select>
+                </div>
+
+                <div class="filter filterActions">
+                    <label>&nbsp;</label>
+                    <button class="btn" id="btnResetFilters" type="button">
+                        Resetuj filtry
+                    </button>
+                </div>
+            </section>
+
+            <section class="kpiGrid">
+                <article class="kpiCard">
+                    <span class="kpiLabel">Łączne zużycie</span>
+                    <strong class="kpiValue" id="kpiUsed">—</strong>
+                    <small id="kpiUsedMeta">Brak danych</small>
+                </article>
+
+                <article class="kpiCard">
+                    <span class="kpiLabel">Aktualny zapas</span>
+                    <strong class="kpiValue" id="kpiStock">—</strong>
+                    <small id="kpiStockMeta">Brak danych</small>
+                </article>
+
+                <article class="kpiCard">
+                    <span class="kpiLabel">Materiały</span>
+                    <strong class="kpiValue" id="kpiMaterials">—</strong>
+                    <small id="kpiMaterialsMeta">Unikalne pozycje</small>
+                </article>
+
+                <article class="kpiCard danger">
+                    <span class="kpiLabel">Ryzyko braku</span>
+                    <strong class="kpiValue" id="kpiRisk">—</strong>
+                    <small id="kpiRiskMeta">Pokrycie poniżej 7 dni</small>
+                </article>
+            </section>
+
+            <section class="summaryPanel executivePanel">
+                <div class="sectionTitleRow">
+                    <div>
+                        <span class="sectionEyebrow">Podsumowanie zarządcze</span>
+                        <h2>Co wynika z danych</h2>
+                    </div>
+
+                    <span id="summaryScope" class="badge blue">—</span>
+                </div>
+
+                <div id="analysisSummary" class="summaryText">
+                    Załaduj plik i wskaż kolumny danych.
+                </div>
+            </section>
+
+            <section class="chartGrid">
+                <article class="chartCard">
+                    <div class="chartHeader">
+                        <div>
+                            <h3>Zużycie według materiału</h3>
+                            <p>Najbardziej wykorzystywane materiały w wybranym zakresie.</p>
+                        </div>
+                    </div>
+
+                    <div class="chartCanvasWrap">
+                        <canvas id="chartMaterial"></canvas>
+                    </div>
+
+                    <div id="insightMaterial" class="insight">
+                        Wybierz mapowanie kolumn, aby utworzyć wykres.
+                    </div>
+                </article>
+
+                <article class="chartCard">
+                    <div class="chartHeader">
+                        <div>
+                            <h3>Trend zużycia</h3>
+                            <p>Zmiana dziennego użycia materiałów w czasie.</p>
+                        </div>
+                    </div>
+
+                    <div class="chartCanvasWrap">
+                        <canvas id="chartTrend"></canvas>
+                    </div>
+
+                    <div id="insightTrend" class="insight">
+                        Wybierz kolumnę daty oraz zużycia.
+                    </div>
+                </article>
+
+                <article class="chartCard">
+                    <div class="chartHeader">
+                        <div>
+                            <h3>Pokrycie zapasu</h3>
+                            <p>Liczba dni pracy przy obecnym średnim tempie zużycia.</p>
+                        </div>
+                    </div>
+
+                    <div class="chartCanvasWrap">
+                        <canvas id="chartCoverage"></canvas>
+                    </div>
+
+                    <div id="insightCoverage" class="insight">
+                        Wybierz materiał, zużycie i końcowy stan magazynowy.
+                    </div>
+                </article>
+
+                <article class="chartCard">
+                    <div class="chartHeader">
+                        <div>
+                            <h3>Zużycie według marki</h3>
+                            <p>Marki generujące największe wykorzystanie materiałów.</p>
+                        </div>
+                    </div>
+
+                    <div class="chartCanvasWrap">
+                        <canvas id="chartBrand"></canvas>
+                    </div>
+
+                    <div id="insightBrand" class="insight">
+                        Wybierz kolumnę marki oraz zużycia.
+                    </div>
+                </article>
+            </section>
+
+            <section class="twoColumnGrid">
+                <article class="summaryPanel">
+                    <div class="sectionTitleRow">
+                        <div>
+                            <span class="sectionEyebrow">Priorytety operacyjne</span>
+                            <h2>Rekomendacje</h2>
+                        </div>
+                    </div>
+
+                    <div id="recommendations" class="recommendationsList">
+                        Brak rekomendacji — załaduj dane.
+                    </div>
+                </article>
+
+                <article class="summaryPanel">
+                    <div class="sectionTitleRow">
+                        <div>
+                            <span class="sectionEyebrow">Stan materiałów</span>
+                            <h2>Największe ryzyka</h2>
+                        </div>
+                    </div>
+
+                    <div id="materialHealthList" class="materialHealthList">
+                        Brak danych o stanie magazynowym.
+                    </div>
+                </article>
+            </section>
+
+        </div>
+    </section>
+    <section id="tab-mapping" class="tabContent">
+
+        <section class="mappingIntro">
+            <div>
+                <span class="sectionEyebrow">Konfiguracja źródła danych</span>
+                <h2>Mapowanie kolumn</h2>
+                <p>
+                    Wskaż, które kolumny z raportu odpowiadają za materiał, zużycie,
+                    stan magazynowy i pozostałe dane. Dashboard przeliczy się automatycznie.
+                </p>
+            </div>
+
+            <div class="mappingActions">
+                <button class="btn" id="btnAutoDetect" type="button">
+                    ✨ Wykryj automatycznie
+                </button>
+
+                <button class="btn primary" id="btnApplyMapping" type="button">
+                    ✓ Zastosuj mapowanie
+                </button>
+            </div>
+        </section>
+
+        <div id="mappingInfo" class="notice info">
+            Załaduj plik Excel, aby zobaczyć dostępne kolumny.
+        </div>
+
+        <section class="mappingGrid">
+
+            <article class="mappingCard required">
+                <div class="mappingCardHeader">
+                    <div>
+                        <h3>Data</h3>
+                        <p>Data zapisu, zużycia lub raportowania.</p>
+                    </div>
+                    <span class="badge orange">Zalecane</span>
+                </div>
+
+                <select id="mapDate" disabled>
+                    <option value="">— nie wybrano —</option>
+                </select>
+            </article>
+
+            <article class="mappingCard required">
+                <div class="mappingCardHeader">
+                    <div>
+                        <h3>Materiał</h3>
+                        <p>Nazwa, kod SKU lub identyfikator materiału.</p>
+                    </div>
+                    <span class="badge red">Wymagane</span>
+                </div>
+
+                <select id="mapMaterial" disabled>
+                    <option value="">— nie wybrano —</option>
+                </select>
+            </article>
+
+            <article class="mappingCard">
+                <div class="mappingCardHeader">
+                    <div>
+                        <h3>Typ materiału</h3>
+                        <p>Na przykład: karton, taśma, folia, papier.</p>
+                    </div>
+                    <span class="badge blue">Opcjonalne</span>
+                </div>
+
+                <select id="mapType" disabled>
+                    <option value="">— nie wybrano —</option>
+                </select>
+            </article>
+
+            <article class="mappingCard">
+                <div class="mappingCardHeader">
+                    <div>
+                        <h3>Marka</h3>
+                        <p>Marka produktów pakowanych z użyciem materiału.</p>
+                    </div>
+                    <span class="badge blue">Opcjonalne</span>
+                </div>
+
+                <select id="mapBrand" disabled>
+                    <option value="">— nie wybrano —</option>
+                </select>
+            </article>
+
+            <article class="mappingCard">
+                <div class="mappingCardHeader">
+                    <div>
+                        <h3>Produkt</h3>
+                        <p>Produkt, styl, kategoria lub asortyment.</p>
+                    </div>
+                    <span class="badge blue">Opcjonalne</span>
+                </div>
+
+                <select id="mapProduct" disabled>
+                    <option value="">— nie wybrano —</option>
+                </select>
+            </article>
+
+            <article class="mappingCard">
+                <div class="mappingCardHeader">
+                    <div>
+                        <h3>Stan początkowy</h3>
+                        <p>Stan magazynowy na początku okresu.</p>
+                    </div>
+                    <span class="badge blue">Opcjonalne</span>
+                </div>
+
+                <select id="mapBeginStock" disabled>
+                    <option value="">— nie wybrano —</option>
+                </select>
+            </article>
+
+            <article class="mappingCard">
+                <div class="mappingCardHeader">
+                    <div>
+                        <h3>Przyjęcia</h3>
+                        <p>Dostawy, inbound lub przyjęcie na magazyn.</p>
+                    </div>
+                    <span class="badge blue">Opcjonalne</span>
+                </div>
+
+                <select id="mapReceived" disabled>
+                    <option value="">— nie wybrano —</option>
+                </select>
+            </article>
+
+            <article class="mappingCard required">
+                <div class="mappingCardHeader">
+                    <div>
+                        <h3>Zużycie</h3>
+                        <p>Ilość wykorzystanego materiału.</p>
+                    </div>
+                    <span class="badge red">Wymagane</span>
+                </div>
+
+                <select id="mapUsed" disabled>
+                    <option value="">— nie wybrano —</option>
+                </select>
+            </article>
+
+            <article class="mappingCard">
+                <div class="mappingCardHeader">
+                    <div>
+                        <h3>Uszkodzenia / straty</h3>
+                        <p>Scrap, waste, damage lub straty materiałowe.</p>
+                    </div>
+                    <span class="badge blue">Opcjonalne</span>
+                </div>
+
+                <select id="mapDamaged" disabled>
+                    <option value="">— nie wybrano —</option>
+                </select>
+            </article>
+
+            <article class="mappingCard">
+                <div class="mappingCardHeader">
+                    <div>
+                        <h3>Zwroty</h3>
+                        <p>Zwroty materiału do magazynu.</p>
+                    </div>
+                    <span class="badge blue">Opcjonalne</span>
+                </div>
+
+                <select id="mapReturned" disabled>
+                    <option value="">— nie wybrano —</option>
+                </select>
+            </article>
+
+            <article class="mappingCard">
+                <div class="mappingCardHeader">
+                    <div>
+                        <h3>Stan końcowy</h3>
+                        <p>Aktualny dostępny zapas materiału.</p>
+                    </div>
+                    <span class="badge orange">Zalecane</span>
+                </div>
+
+                <select id="mapEnding" disabled>
+                    <option value="">— nie wybrano —</option>
+                </select>
+            </article>
+
+            <article class="mappingCard">
+                <div class="mappingCardHeader">
+                    <div>
+                        <h3>Jednostka</h3>
+                        <p>Na przykład: szt., rolki, metry, kg.</p>
+                    </div>
+                    <span class="badge blue">Opcjonalne</span>
+                </div>
+
+                <select id="mapUnit" disabled>
+                    <option value="">— nie wybrano —</option>
+                </select>
+            </article>
+
+        </section>
+
+        <section class="mappingLegend">
+            <span><i class="legendDot red"></i> Wymagane do analizy zużycia</span>
+            <span><i class="legendDot orange"></i> Zalecane do prognoz i pokrycia zapasu</span>
+            <span><i class="legendDot blue"></i> Opcjonalne filtry i podziały danych</span>
+        </section>
+
+    </section>
+
+    <section id="tab-analytics" class="tabContent">
+
+        <section class="analyticsHeader">
+            <div>
+                <span class="sectionEyebrow">Analiza materiałowa</span>
+                <h2>Najważniejsze zależności</h2>
+                <p>
+                    Wykresy wskazują koncentrację zużycia, główne grupy materiałów
+                    oraz produkty generujące największe zapotrzebowanie.
+                </p>
+            </div>
+        </section>
+
+        <section id="analyticsEmptyState" class="emptyState" hidden>
+            <div class="emptyIcon">🔎</div>
+            <h2>Brak danych do analizy</h2>
+            <p>Wybierz przynajmniej Materiał i Zużycie w mapowaniu kolumn.</p>
+        </section>
+
+        <div id="analyticsContainer" class="analyticsGrid">
+
+            <article class="chartCard">
+                <div class="chartHeader">
+                    <div>
+                        <h3>Analiza Pareto</h3>
+                        <p>Materiały odpowiadające za największą część zużycia.</p>
+                    </div>
+                </div>
+
+                <div class="chartCanvasWrap">
+                    <canvas id="chartPareto"></canvas>
+                </div>
+
+                <div id="insightPareto" class="insight">
+                    Dane pojawią się po zastosowaniu mapowania.
+                </div>
+            </article>
+
+            <article class="chartCard">
+                <div class="chartHeader">
+                    <div>
+                        <h3>Zużycie według typu</h3>
+                        <p>Porównanie grup materiałowych.</p>
+                    </div>
+                </div>
+
+                <div class="chartCanvasWrap">
+                    <canvas id="chartType"></canvas>
+                </div>
+
+                <div id="insightType" class="insight">
+                    Wybierz kolumnę typu materiału.
+                </div>
+            </article>
+
+            <article class="chartCard">
+                <div class="chartHeader">
+                    <div>
+                        <h3>Zużycie według produktu</h3>
+                        <p>Produkty lub kategorie wymagające najwięcej materiałów.</p>
+                    </div>
+                </div>
+
+                <div class="chartCanvasWrap">
+                    <canvas id="chartProduct"></canvas>
+                </div>
+
+                <div id="insightProduct" class="insight">
+                    Wybierz kolumnę produktu.
+                </div>
+            </article>
+
+            <article class="chartCard">
+                <div class="chartHeader">
+                    <div>
+                        <h3>ABC materiałów</h3>
+                        <p>Klasyfikacja według udziału w całkowitym zużyciu.</p>
+                    </div>
+                </div>
+
+                <div id="abcTableWrap" class="analysisTableWrap">
+                    <div class="emptyInline">Brak danych do klasyfikacji ABC.</div>
+                </div>
+
+                <div id="insightABC" class="insight">
+                    Klasa A oznacza materiały o najwyższym wpływie na zużycie.
+                </div>
+            </article>
+
+        </div>
+
+    </section>
+
+    <section id="tab-forecast" class="tabContent">
+
+        <section class="forecastHeader">
+            <div>
+                <span class="sectionEyebrow">Planowanie zapasu</span>
+                <h2>Prognoza sezonowa</h2>
+                <p>
+                    Estymacja bazuje na historycznym zużyciu w tym samym sezonie,
+                    aktualnym trendzie oraz konfigurowalnym buforze bezpieczeństwa.
+                </p>
+            </div>
+
+            <div class="forecastControls">
+                <div class="filter">
+                    <label for="forecastSeason">Sezon prognozy</label>
+                    <select id="forecastSeason">
+                        <option value="auto">Automatycznie: następny sezon</option>
+                        <option value="Winter">Zima</option>
+                        <option value="Spring">Wiosna</option>
+                        <option value="Summer">Lato</option>
+                        <option value="Autumn">Jesień</option>
+                    </select>
+                </div>
+
+                <div class="filter">
+                    <label for="forecastDays">Okres prognozy</label>
+                    <select id="forecastDays">
+                        <option value="30">30 dni</option>
+                        <option value="60">60 dni</option>
+                        <option value="90" selected>90 dni</option>
+                        <option value="120">120 dni</option>
+                    </select>
+                </div>
+
+                <div class="filter">
+                    <label for="forecastBuffer">Bufor bezpieczeństwa</label>
+                    <select id="forecastBuffer">
+                        <option value="0.05">5%</option>
+                        <option value="0.10">10%</option>
+                        <option value="0.15" selected>15%</option>
+                        <option value="0.20">20%</option>
+                        <option value="0.25">25%</option>
+                    </select>
+                </div>
+
+                <div class="filter filterActions">
+                    <label>&nbsp;</label>
+                    <button class="btn primary" id="btnRefreshForecast" type="button">
+                        Przelicz prognozę
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="forecastEmptyState" class="emptyState" hidden>
+            <div class="emptyIcon">📅</div>
+            <h2>Brak danych do prognozy</h2>
+            <p>Wybierz Datę, Materiał i Zużycie w mapowaniu kolumn.</p>
+        </section>
+
+        <div id="forecastContent">
+
+            <section class="summaryPanel forecastSummary">
+                <div class="sectionTitleRow">
+                    <div>
+                        <span class="sectionEyebrow">Wniosek prognozy</span>
+                        <h2 id="forecastTitle">Prognoza materiałowa</h2>
+                    </div>
+
+                    <span id="forecastSeasonBadge" class="badge orange">—</span>
+                </div>
+
+                <div id="forecastText" class="summaryText">
+                    Brak danych do prognozy.
+                </div>
+            </section>
+
+            <section class="chartCard">
+                <div class="chartHeader">
+                    <div>
+                        <h3>Zużycie według sezonu</h3>
+                        <p>Historyczny rozkład zużycia materiałów w ciągu roku.</p>
+                    </div>
+                </div>
+
+                <div class="chartCanvasWrap forecastCanvasWrap">
+                    <canvas id="chartSeasonality"></canvas>
+                </div>
+
+                <div id="insightSeasonality" class="insight">
+                    Wybierz kolumnę daty i zużycia.
+                </div>
+            </section>
+
+            <section class="summaryPanel">
+                <div class="sectionTitleRow">
+                    <div>
+                        <span class="sectionEyebrow">Plan zakupu</span>
+                        <h2>Rekomendowane uzupełnienie zapasu</h2>
+                    </div>
+
+                    <button class="btn" id="btnExportForecast" type="button" disabled>
+                        ⬇ Eksport prognozy CSV
+                    </button>
+                </div>
+
+                <div id="forecastTableWrap" class="analysisTableWrap">
+                    <div class="emptyInline">Brak danych prognozowych.</div>
+                </div>
+            </section>
+
+        </div>
+
+    </section>
+
+    <section id="tab-table" class="tabContent">
+
+        <section class="tableHeader">
+            <div>
+                <span class="sectionEyebrow">Dane źródłowe</span>
+                <h2>Tabela raportu</h2>
+                <p>Przeglądaj wiersze po zastosowaniu filtrów dashboardu.</p>
+            </div>
+
+            <div class="tableActions">
+                <button class="btn" id="btnClearTableSearch" type="button">
+                    Wyczyść wyszukiwanie
+                </button>
+
+                <button class="btn primary" id="btnExportTable" type="button" disabled>
+                    ⬇ Eksport widocznych danych
+                </button>
+            </div>
+        </section>
+
+        <section class="tableToolbar">
+            <div class="tableSearchWrap">
+                <span>⌕</span>
+                <input
+                    id="tableSearch"
+                    type="search"
+                    autocomplete="off"
+                    placeholder="Szukaj w całej tabeli..."
+                >
+            </div>
+
+            <div class="tableMeta">
+                <span id="tableResultCount">0 wierszy</span>
+            </div>
+        </section>
+
+        <div id="tableContainer" class="tableContainer">
+            <div class="emptyState compact">
+                <div class="emptyIcon">📋</div>
+                <h2>Brak danych</h2>
+                <p>Załaduj plik Excel, aby wyświetlić tabelę.</p>
+            </div>
+        </div>
+
+        <section id="tablePagination" class="pagination" hidden>
+            <button class="btn" id="btnTablePrev" type="button">
+                ← Poprzednia
+            </button>
+
+            <span id="tablePageInfo">Strona 1 / 1</span>
+
+            <button class="btn" id="btnTableNext" type="button">
+                Następna →
+            </button>
+        </section>
+
+    </section>
+
+</main>
+
+<div id="loadingOverlay" class="loadingOverlay" hidden>
+    <div class="loadingBox">
+        <div class="loadingSpinner"></div>
+        <h2 id="loadingTitle">Przetwarzanie pliku...</h2>
+        <p id="loadingText">Trwa odczyt danych Excel.</p>
+    </div>
+</div>
+
+<div id="toastContainer" class="toastContainer" aria-live="polite"></div>
+
+<script src="script.js"></script>
+
+</body>
+</html>

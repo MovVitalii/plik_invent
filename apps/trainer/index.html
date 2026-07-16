@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="pl" class="no-js">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Lokalny trener analizy danych Excel: import, jakość, czyszczenie, obliczenia, Pivot, wykres i eksport.">
+    <meta name="color-scheme" content="light">
+    <title>Excel Analytics Trainer</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="vendor/xlsx.full.min.js"></script>
+    <script src="vendor/chart.umd.js"></script>
+</head>
+<body>
+    <a class="skip-link" href="#mainContent">Przejdź do treści</a>
+
+    <header class="app-header">
+        <div class="brand">
+            <span class="brand-mark" aria-hidden="true">EAT</span>
+            <div>
+                <p class="eyebrow">Lokalny trener analizy danych</p>
+                <h1>Excel Analytics Trainer</h1>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <button id="exportButton" class="button button-secondary" type="button" disabled>
+                Eksport
+            </button>
+            <button id="resetButton" class="button button-danger-ghost" type="button">
+                Wyczyść
+            </button>
+        </div>
+    </header>
+
+    <div class="app-shell">
+        <aside class="workflow-sidebar" aria-label="Etapy analizy">
+            <p class="sidebar-title">Proces analizy</p>
+
+            <nav class="workflow-nav">
+                <button class="workflow-step is-active" data-section="importSection" type="button">
+                    <span>1</span>
+                    Import
+                </button>
+                <button class="workflow-step" data-section="previewSection" type="button" disabled>
+                    <span>2</span>
+                    Dane
+                </button>
+                <button class="workflow-step" data-section="qualitySection" type="button" disabled>
+                    <span>3</span>
+                    Jakość
+                </button>
+                <button class="workflow-step" data-section="cleaningSection" type="button" disabled>
+                    <span>4</span>
+                    Czyszczenie
+                </button>
+                <button class="workflow-step" data-section="calculationSection" type="button" disabled>
+                    <span>5</span>
+                    Obliczenia
+                </button>
+                <button class="workflow-step" data-section="pivotSection" type="button" disabled>
+                    <span>6</span>
+                    Pivot
+                </button>
+                <button class="workflow-step" data-section="reportSection" type="button" disabled>
+                    <span>7</span>
+                    Raport
+                </button>
+            </nav>
+
+            <section id="learningPanel" class="learning-panel">
+                <button
+                    id="learningPanelToggle"
+                    class="learning-toggle"
+                    type="button"
+                    aria-expanded="true"
+                    aria-controls="learningPanelContent"
+                >
+                    Tryb nauki
+                    <span aria-hidden="true">⌄</span>
+                </button>
+
+                <div id="learningPanelContent" class="learning-content">
+                    <div>
+                        <strong>Co robisz</strong>
+                        <p id="learningContext">Wczytaj plik, aby rozpocząć analizę.</p>
+                    </div>
+                    <div>
+                        <strong>Odpowiednik w Excelu</strong>
+                        <p id="excelEquivalent">Dane → Pobierz dane</p>
+                    </div>
+                    <div>
+                        <strong>Jak sprawdzić wynik</strong>
+                        <p id="verificationTip">Zawsze sprawdzaj liczbę wierszy.</p>
+                    </div>
+                </div>
+            </section>
+        </aside>
+
+        <main id="mainContent" class="main-content">
+            <section id="importSection" class="app-section is-active">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Krok 1</p>
+                        <h2>Import pliku</h2>
+                        <p>Wczytaj plik Excel lub CSV. Dane pozostają w przeglądarce.</p>
+                    </div>
+                    <span id="importStatus" class="status-badge">Brak pliku</span>
+                </div>
+
+                <label id="dropZone" class="drop-zone" for="fileInput">
+                    <input
+                        id="fileInput"
+                        class="visually-hidden"
+                        type="file"
+                        accept=".xlsx,.xls,.xlsm,.xlsb,.csv,.tsv,.ods"
+                    >
+                    <span class="drop-icon" aria-hidden="true">⇧</span>
+                    <strong>Przeciągnij plik lub kliknij</strong>
+                    <small>.xlsx · .xls · .csv · .tsv · .ods</small>
+                </label>
+
+                <div id="fileSummary" class="summary-card" hidden>
+                    <div>
+                        <span>Plik</span>
+                        <strong id="fileName">—</strong>
+                    </div>
+                    <div>
+                        <span>Rozmiar</span>
+                        <strong id="fileSize">—</strong>
+                    </div>
+                    <div>
+                        <span>Arkusze</span>
+                        <strong id="sheetCount">—</strong>
+                    </div>
+                    <div>
+                        <span>Wiersze</span>
+                        <strong id="sourceRowCount">—</strong>
+                    </div>
+                </div>
+
+                <div id="sheetControls" class="control-row" hidden>
+                    <label class="field grow">
+                        <span>Arkusz</span>
+                        <select id="sheetSelector"></select>
+                    </label>
+                    <button id="analyzeSheetButton" class="button button-primary" type="button">
+                        Analizuj arkusz
+                    </button>
+                </div>
+            </section>
+
+            <section id="previewSection" class="app-section" hidden>
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Krok 2</p>
+                        <h2>Podgląd danych</h2>
+                        <p>Wyszukuj, sortuj i sprawdzaj dane przed analizą.</p>
+                    </div>
+                    <span id="previewStatus" class="status-badge">Oczekuje</span>
+                </div>
+
+                <div class="toolbar">
+                    <label class="field grow">
+                        <span>Wyszukaj w całej tabeli</span>
+                        <input id="globalSearchInput" type="search" placeholder="np. ARKET, 2026, P01">
+                    </label>
+                    <label class="field compact">
+                        <span>Wierszy na stronę</span>
+                        <select id="pageSizeSelector">
+                            <option value="10">10</option>
+                            <option value="25" selected>25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </label>
+                    <button id="clearTableFiltersButton" class="button button-secondary" type="button">
+                        Wyczyść filtry
+                    </button>
+                </div>
+
+                <div class="table-scroll">
+                    <table id="dataTable">
+                        <thead id="dataTableHead"></thead>
+                        <tbody id="dataTableBody">
+                            <tr>
+                                <td class="empty-table-message">Brak danych do wyświetlenia.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination">
+                    <button id="previousPageButton" class="button button-secondary button-small" type="button" disabled>
+                        Poprzednia
+                    </button>
+                    <span id="paginationStatus">Strona 1 z 1 · 0 wierszy</span>
+                    <button id="nextPageButton" class="button button-secondary button-small" type="button" disabled>
+                        Następna
+                    </button>
+                </div>
+            </section>
+
+            <section id="qualitySection" class="app-section" hidden>
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Krok 3</p>
+                        <h2>Jakość danych</h2>
+                        <p>Znajdź puste komórki, duplikaty i niespójne typy.</p>
+                    </div>
+                    <button id="runQualityCheckButton" class="button button-primary" type="button">
+                        Uruchom kontrolę
+                    </button>
+                </div>
+
+                <div class="metric-grid">
+                    <article><span>Wiersze</span><strong id="qualityRows">0</strong></article>
+                    <article><span>Kolumny</span><strong id="qualityColumns">0</strong></article>
+                    <article><span>Puste komórki</span><strong id="qualityEmptyCells">0</strong></article>
+                    <article><span>Duplikaty</span><strong id="qualityDuplicates">0</strong></article>
+                    <article><span>Błędy typów</span><strong id="qualityTypeErrors">0</strong></article>
+                    <article><span>Unikalne wartości</span><strong id="qualityUniqueValues">0</strong></article>
+                </div>
+
+                <div class="table-scroll">
+                    <table id="qualityTable">
+                        <thead>
+                            <tr>
+                                <th>Kolumna</th>
+                                <th>Typ</th>
+                                <th>Dominujący</th>
+                                <th>Puste</th>
+                                <th>Unikalne</th>
+                                <th>Błędy typu</th>
+                                <th>Minimum</th>
+                                <th>Maksimum</th>
+                                <th>Średnia</th>
+                                <th>Problemy</th>
+                            </tr>
+                        </thead>
+                        <tbody id="qualityTableBody">
+                            <tr><td colspan="10" class="empty-table-message">Uruchom kontrolę jakości.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="cleaningSection" class="app-section" hidden>
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Krok 4</p>
+                        <h2>Czyszczenie danych</h2>
+                        <p>Wykonaj podgląd zmiany, a następnie zastosuj ją do danych roboczych.</p>
+                    </div>
+                    <span id="cleaningStatus" class="status-badge">Brak zmian</span>
+                </div>
+
+                <div class="form-grid">
+                    <label class="field">
+                        <span>Kolumna</span>
+                        <select id="cleaningColumnSelector"></select>
+                    </label>
+                    <label class="field">
+                        <span>Operacja</span>
+                        <select id="cleaningOperationSelector"></select>
+                    </label>
+                </div>
+
+                <div id="replaceControls" class="form-grid" hidden>
+                    <label class="field">
+                        <span>Znajdź</span>
+                        <input id="replaceFromInput" type="text">
+                    </label>
+                    <label class="field">
+                        <span>Zamień na</span>
+                        <input id="replaceToInput" type="text">
+                    </label>
+                </div>
+
+                <div class="action-row">
+                    <button id="previewCleaningButton" class="button button-secondary" type="button">
+                        Podgląd
+                    </button>
+                    <button id="applyCleaningButton" class="button button-primary" type="button">
+                        Zastosuj
+                    </button>
+                    <button id="undoCleaningButton" class="button button-danger-ghost" type="button" disabled>
+                        Cofnij ostatnią zmianę
+                    </button>
+                </div>
+
+                <div id="cleaningPreview" class="result-card">
+                    Wybierz operację, aby zobaczyć efekt.
+                </div>
+
+                <div class="subsection-heading">
+                    <h3>Historia zmian</h3>
+                </div>
+                <ol id="cleaningHistory" class="history-list">
+                    <li>Brak wykonanych operacji.</li>
+                </ol>
+            </section>
+
+            <section id="calculationSection" class="app-section" hidden>
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Krok 5</p>
+                        <h2>Obliczenia</h2>
+                        <p>Wybierz funkcję, kolumnę wartości i opcjonalne warunki.</p>
+                    </div>
+                    <span id="calculationStatus" class="status-badge">Brak obliczenia</span>
+                </div>
+
+                <div class="form-grid">
+                    <label class="field">
+                        <span>Funkcja</span>
+                        <select id="calculationFunctionSelector"></select>
+                    </label>
+                    <label id="calculationValueColumnField" class="field">
+                        <span>Kolumna wartości</span>
+                        <select id="calculationValueColumnSelector"></select>
+                    </label>
+                </div>
+
+                <section id="criteriaBuilder" class="criteria-builder" hidden>
+                    <div class="subsection-heading">
+                        <div>
+                            <h3>Warunki</h3>
+                            <p>Wszystkie warunki są łączone operatorem AND.</p>
+                        </div>
+                        <button id="addCriterionButton" class="button button-secondary button-small" type="button">
+                            Dodaj warunek
+                        </button>
+                    </div>
+                    <div id="criteriaRows" class="criteria-rows"></div>
+                </section>
+
+                <div class="action-row">
+                    <button id="runCalculationButton" class="button button-primary" type="button">
+                        Oblicz
+                    </button>
+                </div>
+
+                <div class="calculation-output">
+                    <article>
+                        <span>Wynik</span>
+                        <strong id="calculationResult">—</strong>
+                    </article>
+                    <article>
+                        <span>Formuła Excel</span>
+                        <code id="excelFormulaPreview">—</code>
+                    </article>
+                </div>
+
+                <p id="calculationExplanation" class="result-card">
+                    Wybierz funkcję i kolumnę.
+                </p>
+            </section>
+
+            <section id="pivotSection" class="app-section" hidden>
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Krok 6</p>
+                        <h2>Tabela przestawna</h2>
+                        <p>Kliknij pole lub przeciągnij je do wybranego obszaru.</p>
+                    </div>
+                    <button id="buildPivotButton" class="button button-primary" type="button">
+                        Zbuduj Pivot
+                    </button>
+                </div>
+
+                <div class="pivot-builder">
+                    <aside class="pivot-fields-panel">
+                        <label class="field">
+                            <span>Znajdź pole</span>
+                            <input id="pivotFieldSearchInput" type="search" placeholder="Nazwa kolumny">
+                        </label>
+                        <div id="pivotFieldsList" class="pivot-fields-list"></div>
+                    </aside>
+
+                    <div class="pivot-zones">
+                        <section>
+                            <h3>Wiersze</h3>
+                            <div id="pivotRowsZone" class="pivot-zone" data-zone="rows"></div>
+                        </section>
+                        <section>
+                            <h3>Kolumny</h3>
+                            <div id="pivotColumnsZone" class="pivot-zone" data-zone="columns"></div>
+                        </section>
+                        <section>
+                            <h3>Wartości</h3>
+                            <div id="pivotValuesZone" class="pivot-zone" data-zone="values"></div>
+                        </section>
+                        <section>
+                            <h3>Filtry</h3>
+                            <div id="pivotFiltersZone" class="pivot-zone" data-zone="filters"></div>
+                        </section>
+                    </div>
+                </div>
+
+                <label class="field compact pivot-aggregation">
+                    <span>Agregacja</span>
+                    <select id="pivotAggregationSelector"></select>
+                </label>
+
+                <div class="metric-grid pivot-metrics">
+                    <article><span>Wiersze źródłowe</span><strong id="pivotSourceRows">0</strong></article>
+                    <article><span>Grupy</span><strong id="pivotGroups">0</strong></article>
+                    <article><span>Suma</span><strong id="pivotTotal">0</strong></article>
+                    <article><span>Średnia</span><strong id="pivotAverage">0</strong></article>
+                    <article><span>Minimum</span><strong id="pivotMinimum">—</strong></article>
+                    <article><span>Maksimum</span><strong id="pivotMaximum">—</strong></article>
+                </div>
+
+                <div class="table-scroll">
+                    <table id="pivotTable">
+                        <thead id="pivotTableHead"></thead>
+                        <tbody id="pivotTableBody">
+                            <tr><td class="empty-table-message">Zbuduj tabelę przestawną.</td></tr>
+                        </tbody>
+                        <tfoot id="pivotTableFoot"></tfoot>
+                    </table>
+                </div>
+            </section>
+
+            <section id="reportSection" class="app-section" hidden>
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Krok 7</p>
+                        <h2>Raport i eksport</h2>
+                        <p>Zbuduj wykres na podstawie Pivot i zapisz wyniki.</p>
+                    </div>
+                </div>
+
+                <div class="report-actions">
+                    <button id="exportCleanDataButton" class="button button-secondary" type="button" disabled>
+                        Eksportuj czyste dane
+                    </button>
+                    <button id="exportAnalysisButton" class="button button-primary" type="button" disabled>
+                        Eksportuj pełną analizę
+                    </button>
+                </div>
+
+                <div class="chart-controls">
+                    <label class="field compact">
+                        <span>Typ wykresu</span>
+                        <select id="chartTypeSelector"></select>
+                    </label>
+                    <button id="renderChartButton" class="button button-primary" type="button" disabled>
+                        Zbuduj wykres
+                    </button>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-canvas-wrap">
+                        <canvas id="analysisChart"></canvas>
+                    </div>
+                    <p id="chartDescription" class="chart-description">Brak wykresu.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <footer class="app-footer">
+        <span>Excel Analytics Trainer</span>
+        <span>Wersja <strong id="appVersion">1.0.0</strong></span>
+        <span>Dane są przetwarzane lokalnie.</span>
+    </footer>
+
+    <div id="loadingOverlay" class="loading-overlay" hidden>
+        <section class="loading-panel" role="status" aria-live="polite">
+            <div class="spinner" aria-hidden="true"></div>
+            <h2 id="loadingTitle">Przetwarzanie danych</h2>
+            <p id="loadingMessage">Proszę czekać...</p>
+            <progress id="loadingProgress" max="100" value="0">0%</progress>
+        </section>
+    </div>
+
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-relevant="additions"></div>
+
+    <script src="src/constants.js"></script>
+    <script src="src/state.js"></script>
+    <script src="src/utils.js"></script>
+    <script src="src/dom.js"></script>
+    <script src="src/import-engine.js"></script>
+    <script src="src/data-quality-engine.js"></script>
+    <script src="src/cleaning-engine.js"></script>
+    <script src="src/calculation-engine.js"></script>
+    <script src="src/pivot-engine.js"></script>
+    <script src="src/chart-engine.js"></script>
+    <script src="src/export-engine.js"></script>
+    <script src="src/learning-engine.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
