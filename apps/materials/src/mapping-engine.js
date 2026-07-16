@@ -148,31 +148,40 @@
         }
         return assignment;
     }
+function calculateAutomaticMapping(headers, detectedTypes) {
+    const mapping = Object.fromEntries(SYSTEM_FIELDS.map((field) => [field.id, ""]));
+    const confidence = {};
+    const origins = {};
+    const assignedHeaders = new Set();
+    const assignedFields = new Set();
 
-    function calculateAutomaticMapping(headers, detectedTypes) {
-        const mapping = Object.fromEntries(SYSTEM_FIELDS.map((field) => [field.id, ""]));
-        const confidence = {};
-        const origins = {};
-        const assigned = new Set();
-        const ordered = [...SYSTEM_FIELDS.filter((field) => field.required), ...SYSTEM_FIELDS.filter((field) => !field.required)];
-
-        ordered.forEach((field) => {
-            const best = headers
-                .filter((header) => !assigned.has(header))
-                .map((header) => ({
-                    header,
-                    score: scoreFieldMatch(header, field, detectedTypes[header])
-                }))
-                .sort((left, right) => right.score - left.score)[0];
-            if (!best || best.score < MAPPING_CONFIDENCE.autoSelectThreshold) return;
-            mapping[field.id] = best.header;
-            confidence[field.id] = best.score;
-            origins[field.id] = "auto";
-            assigned.add(best.header);
+    const candidates = [];
+    SYSTEM_FIELDS.forEach((field) => {
+        headers.forEach((header) => {
+            const score = scoreFieldMatch(header, field, detectedTypes[header]);
+            if (score >= MAPPING_CONFIDENCE.autoSelectThreshold) {
+                candidates.push({ field, header, score });
+            }
         });
+    });
 
-        return { mapping, confidence, origins };
-    }
+    // Global best-match-first assignment instead of per-field-in-array-order greediness:
+    // a lower-scoring field earlier in SYSTEM_FIELDS must not steal a column that another
+    // field would match exactly (e.g. "Zmiana" must go to "shift", score 1.0, not "unit").
+    candidates.sort((left, right) => right.score - left.score);
+
+    candidates.forEach(({ field, header, score }) => {
+        if (assignedFields.has(field.id) || assignedHeaders.has(header)) return;
+        mapping[field.id] = header;
+        confidence[field.id] = score;
+        origins[field.id] = "auto";
+        assignedFields.add(field.id);
+        assignedHeaders.add(header);
+    });
+
+    return { mapping, confidence, origins };
+}
+   
 
     function renderSourceColumns() {
         const headers = state.get("import.headers", []);
