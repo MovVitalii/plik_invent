@@ -1,137 +1,122 @@
-# Pack Materials Analytics 1.4.1 — dokumentacja techniczna
+# Materials Analytics 1.5.0 — dokumentacja techniczna
 
-## Architektura
+## Model uruchomieniowy
 
-Aplikacja jest statyczna i działa bez backendu. Moduły są ładowane kolejno z `index.html`:
+Aplikacja jest statyczna, działa w przeglądarce i nie ma backendu. Dane, statystyki, SQL, raporty i eksporty są przetwarzane lokalnie. Nie ma integracji z AI, LLM, chmurą ani zewnętrznym API.
+
+## Moduły bazowe
 
 - `constants.js` — definicje pól, limity, progi i wersja runtime;
-- `state.js` — centralny stan oraz zdarzenia;
-- `utils.js` — daty, liczby, tekst, bezpieczne zaokrąglanie i walidacja plików;
+- `state.js` — centralny stan i zdarzenia;
+- `utils.js` — tekst, daty, liczby, formaty i walidacja;
 - `import-engine.js` — Excel/CSV, wiele plików, arkusze i nagłówki;
 - `mapping-engine.js` — mapowanie źródła na role analityczne;
-- `value-normalization-engine.js` — deterministyczne techniczne ujednolicanie wartości, bez osobnej sekcji UI;
-- `normalization-engine.js` — walidacja, zachowanie źródła i budowa rekordu analitycznego;
+- `value-normalization-engine.js` — techniczne ujednolicanie wartości bez osobnej sekcji UI;
+- `normalization-engine.js` — walidacja i budowa rekordu analitycznego;
 - `pivot-engine.js` — filtry, Pivot Table i podsumowania;
-- `decision-engine.js` — Coverage, ABC/Pareto i planowanie zapotrzebowania;
+- `decision-engine.js` — Coverage, ABC/Pareto i planowanie;
 - `chart-engine.js` — wykresy;
 - `export-engine.js` — eksport analizy;
-- `workspace-storage.js` — IndexedDB i fallback do localStorage;
-- `formula-engine.js` — parser/evaluator formuł bez wykonania kodu;
-- `spreadsheet-engine.js` — wirtualny arkusz, transformacje, jakość, zapasy, Workspace i eksport projektu;
-- `app.js` — inicjalizacja i koordynacja modułów.
+- `workspace-storage.js` — IndexedDB i fallback localStorage;
+- `formula-engine.js` — parser/evaluator bez wykonania kodu;
+- `spreadsheet-engine.js` — wirtualny arkusz, transformacje, zapasy, Workspace i eksport;
+- `app.js` — inicjalizacja oraz koordynacja workflow.
 
-## Import
+## Smart Analytics
 
-Obsługiwane formaty:
+Katalog `src/analytics/`:
 
-```text
-.xlsx, .xls, .xlsb, .csv
-```
+- `rules/analytics-rules.js` — wersjonowane role, progi, agregacje i zasady rekomendacji;
+- `analytics-core.js` — wspólne funkcje statystyczne, sampling i normalizacja;
+- `schema-profiler.js` — fizyczne typy, rozkład, unikalność i dowody;
+- `semantic-role-engine.js` — semantyczne role biznesowe;
+- `descriptive-statistics.js` — statystyki opisowe;
+- `data-quality-engine.js` — braki, duplikaty, typy mieszane i spójność;
+- `outlier-engine.js` — IQR, MAD robust Z-score i anomalie lokalne;
+- `trend-engine.js` — szeregi czasowe, granularność, regresja i zmienność;
+- `period-comparison-engine.js` — zmiany okres do okresu i contributors;
+- `correlation-engine.js` — Pearson, Spearman, eta² i Cramér’s V;
+- `confidence-engine.js` — wspólna ocena confidence;
+- `pivot-recommender.js` — rekomendacje i JavaScript materializer Pivot;
+- `chart-recommender.js` — dobór wykresów;
+- `insight-engine.js` — regułowe wnioski, ryzyka i działania;
+- `report-generator.js` — raport szablonowy i metodologia;
+- `analytics-orchestrator.js` — kolejność etapów i struktura wyniku;
+- `analytics.worker.js` — izolacja kosztownych obliczeń;
+- `duckdb-engine.js` — lokalny adapter DuckDB-WASM;
+- `smart-analytics-engine.js` — UI, eksport, wykresy i integracja z Workspace.
 
-Import pozwala:
-
-- wskazać wiersz nagłówków;
-- wybrać arkusz;
-- wczytać wiele plików;
-- połączyć arkusze o zgodnym układzie kolumn;
-- zachować nazwę pliku, arkusza i rzeczywisty numer wiersza źródłowego;
-- otworzyć dane jako ogólny arkusz lub przejść do mapowania materiałowego.
-
-## Mapowanie
-
-Minimalny zestaw do analizy zużycia:
-
-```text
-Data + Materiał + Zużycie
-```
-
-`Marka` jest opcjonalna. `Aktualny stan zapasu` jest inną miarą niż `Zużycie`:
-
-- `Zużycie` opisuje przepływ w okresie;
-- `Aktualny stan zapasu` opisuje snapshot dostępnej ilości.
-
-Najlepszą praktyką jest importowanie zapasów w osobnej tabeli w zakładce `Zapasy`.
-
-## Edytor danych
-
-### Arkusz
-
-- wszystkie oryginalne kolumny są zachowane;
-- komórki są edytowalne;
-- zakres można zaznaczyć i kopiować/wklejać jako TSV;
-- można dodawać i usuwać wiersze/kolumny;
-- kolumny można zmieniać nazwą, szerokością, kolejnością i widocznością;
-- tabela jest renderowana wirtualnie, aby ograniczyć liczbę elementów DOM;
-- sortowanie wielopoziomowe i filtry są zapisywane przez autosave.
-
-### Transformacje
-
-Operacje:
-
-- zamiana tekstu, w tym regex w formie `/wzorzec/gi`;
-- Trim i usuwanie znaków niedrukowalnych;
-- wielkie/małe litery i Proper Case;
-- Fill Down / Fill Up;
-- konwersja na liczbę lub datę;
-- zaokrąglenie i wartość bezwzględna;
-- usuwanie pustych wierszy;
-- usuwanie pełnych duplikatów.
-
-Każda operacja ma podgląd i może działać na całym zbiorze, po filtrach albo na zaznaczeniu. Undo/Redo przechowuje różnice, a nie pełne kopie datasetu.
-
-### Formuły
-
-Parser obsługuje zależności między kolumnami obliczeniowymi i wylicza je topologicznie. Zależności cykliczne są odrzucane przed modyfikacją projektu. Zmiana nazwy kolumny przepisuje jej odwołania w formułach, a kolumna używana przez inną formułę jest chroniona przed usunięciem.
-
-Funkcje:
+## Pipeline
 
 ```text
-IF, IFERROR, ISBLANK, ROUND, ABS, COALESCE, CONCAT,
-UPPER, LOWER, LEN, MIN, MAX, DATE_DIFF_DAYS
+rows + fields + options
+→ schema profile
+→ semantic roles
+→ descriptive statistics
+→ data quality
+→ outliers
+→ trends
+→ period comparisons
+→ correlations
+→ recommended pivots
+→ recommended charts
+→ rule-based insights
+→ template report
 ```
 
-`IF` i `IFERROR` są ewaluowane leniwie. `ROUND` stosuje zaokrąglenie połówkowe od zera i obsługuje ujemną liczbę miejsc.
+Wynik zawiera `datasetProfile`, `schema`, `descriptive`, `quality`, `outliers`, `trends`, `periodComparisons`, `correlations`, `pivots`, `recommendedCharts`, `insights`, `report`, `methodology` i `execution`.
 
-### Błędy
+## Metodologia i agregacje
 
-Wiersze, które nie przechodzą walidacji, nie są bezpowrotnie usuwane. Użytkownik może poprawić wartości źródłowe i uruchomić ponowną walidację.
+- Quick mode: ograniczona próbka dla profilowania i kosztownych obliczeń.
+- Full mode: pełne statystyki jakościowe/opisowe; bounded sample może pozostać dla type detection i korelacji.
+- Outliers: IQR oraz robust Z-score oparty na MAD.
+- Stock: `latest` według daty i kolejności rekordu.
+- Price, percentage, duration: `average`.
+- Quantity, currency, cost, generic measure: `sum`.
 
-### Jakość
+Raport zawsze przechowuje liczbę wierszy, tryb, sampling, metody i wersję reguł.
 
-Profil obejmuje liczbę pustych wartości, unikalność, typ, minimum, maksimum, średnią i ocenę kolumny.
+## DuckDB-WASM
 
-## Osobna tabela zapasów
-
-Obsługiwane role:
+Lokalne pliki znajdują się w `vendor/duckdb/`:
 
 ```text
-Materiał, Stan zapasu, Data snapshotu, Jednostka, Lead time,
-MOQ, Krotność zamówienia, Safety stock, Otwarte zamówienia, Dostawca
+duckdb-browser.bundle.mjs
+duckdb-browser-mvp.worker.js
+duckdb-mvp.wasm
 ```
 
-Dla wielu snapshotów wybierany jest najnowszy zapis według daty dla każdego materiału. Identyfikator materiału jest normalizowany względem wielkości liter i polskich znaków. Niejednolite jednostki zużycia albo niezgodność jednostki zapasu blokują niewiarygodny wynik zamówienia.
+Adapter:
+
+- ładuje runtime wyłącznie lokalnie;
+- rejestruje tymczasowy JSON jako tabelę;
+- generuje CTE `base`, `grouped`, `totals`;
+- używa prawdziwego total z rekordów źródłowych;
+- obsługuje `sum`, `average`, `min`, `max`, `count` i `latest`;
+- usuwa tabelę i plik po wykonaniu;
+- w przypadku niedostępności SQL pozostawia JavaScript fallback.
 
 ## Workspace
 
-Projekt zawiera dane, pola, mapowanie, filtry, kolumny obliczeniowe, historię transformacji, informacje źródłowe i tabelę zapasów.
-
-- schemat: v3;
+- schemat: **v4**;
 - autosave: IndexedDB;
-- fallback: localStorage, gdy IndexedDB jest niedostępne;
-- transfer między przeglądarkami: Workspace JSON;
-- import jest transakcyjny i waliduje strukturę oraz zależności przed zastąpieniem bieżącego stanu;
-- eksport projektu: wieloarkuszowy XLSX.
+- fallback: localStorage;
+- eksport/import: Workspace JSON;
+- wynik Smart Analytics jest serializowany;
+- import jest transakcyjny i waliduje strukturę przed zastąpieniem stanu.
 
-## Bezpieczeństwo
+## Zasady bezpieczeństwa
 
-Dane są przetwarzane lokalnie. Parser formuł nie wykonuje kodu JavaScript i nie korzysta z `eval` ani konstruktora `Function`. Eksport CSV neutralizuje tekst, który aplikacja arkuszowa mogłaby uruchomić jako formułę.
+- brak `eval` i `new Function` w kodzie aplikacji;
+- brak zewnętrznych URL w Smart Analytics;
+- brak wykonania kodu z formuł użytkownika;
+- CSV injection protection;
+- bounded rendering i bounded sampling;
+- jawne limitations/confidence zamiast ukrywania słabej jakości wyniku.
 
 ## Testy
 
-- `verification/static-audit-test.js` — 12 kontroli;
-- `verification/integration-test.js` — 49 kontroli analizy decyzyjnej;
-- `verification/data-lab-test.js` — 27 kontroli workspace;
-- `verification/audit-regression-test.js` — 42 kontrole regresyjne;
-- `verification/performance-test.js` — 8 kontroli na 50 000 wierszy.
+Pełny zestaw: `npm test` w katalogu głównym.
 
-Łącznie: **138/138**.
+Łącznie: **222/222** kontroli, w tym 8 rzeczywistych testów instancjacji dołączonego DuckDB-WASM i wykonania SQL.

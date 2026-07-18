@@ -57,11 +57,25 @@ const appHtml = fs.readFileSync(path.join(APP, "index.html"), "utf8");
 check("Workspace JSON input is physically present", /id=["']dataLabWorkspaceInput["']/.test(appHtml));
 check("Removed value-normalization panel is absent", !/technicalNormalizationElements|normalizationRulesContainer/.test(appHtml));
 check("Dedicated stock-clear action is present", /id=["']workspaceClearStockButton["']/.test(appHtml));
+check("Smart Analytics workspace is present", /id=["']smartAnalyticsSection["']/.test(appHtml) && /id=["']runSmartAnalyticsButton["']/.test(appHtml));
+check("Smart Analytics is workflow step 6", /data-target-section=["']smartAnalyticsSection["'][\s\S]*?workflow-number["']>6</.test(appHtml));
 
 const sourceText = jsFiles.map((file) => fs.readFileSync(file, "utf8")).join("\n");
 check("Application source does not use eval", !/\beval\s*\(/.test(sourceText));
 check("Application source does not use Function constructor", !/\bnew\s+Function\s*\(/.test(sourceText));
 check("Legacy data-lab-engine reference is absent", !/data-lab-engine\.js/.test(appHtml + sourceText));
+const analyticsDirectory = path.join(APP, "src", "analytics");
+const requiredAnalyticsModules = [
+    "rules/analytics-rules.js", "analytics-core.js", "schema-profiler.js", "semantic-role-engine.js", "data-quality-engine.js",
+    "outlier-engine.js", "trend-engine.js", "period-comparison-engine.js", "correlation-engine.js",
+    "pivot-recommender.js", "chart-recommender.js", "insight-engine.js", "report-generator.js",
+    "analytics-orchestrator.js", "analytics.worker.js", "duckdb-engine.js", "smart-analytics-engine.js"
+];
+check("All Smart Analytics modules exist", requiredAnalyticsModules.every((name) => fs.existsSync(path.join(analyticsDirectory, name))));
+check("Smart Analytics uses a dedicated Web Worker", /new Worker\(`src\/analytics\/analytics\.worker\.js/.test(sourceText));
+check("Smart Analytics source contains no external service URL", !/https?:\/\//i.test(walk(analyticsDirectory, (file) => file.endsWith(".js")).map((file) => fs.readFileSync(file, "utf8")).join("\n")));
+const duckdbVendor = path.join(APP, "vendor", "duckdb");
+check("Local DuckDB-WASM runtime is bundled", ["duckdb-browser.bundle.mjs", "duckdb-browser-mvp.worker.js", "duckdb-mvp.wasm"].every((name) => fs.existsSync(path.join(duckdbVendor, name))));
 
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
 const constants = fs.readFileSync(path.join(APP, "src", "constants.js"), "utf8");
@@ -77,6 +91,7 @@ check("Workspace schema version is consistent", storageSchema === serializerSche
 
 const rootHtml = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
 check("Root entry redirects to the application", /apps\/materials\/index\.html/.test(rootHtml));
+check("Windows launcher has a PowerShell fallback with WASM MIME support", fs.existsSync(path.join(ROOT, "start-server.ps1")) && /application\/wasm/.test(fs.readFileSync(path.join(ROOT, "start-server.ps1"), "utf8")));
 
 const passed = checks.filter(Boolean).length;
 console.log(`\n${passed}/${checks.length} checks passed.`);

@@ -27,7 +27,7 @@
         "excelFileInput", "exportButton", "exportMenu", "exportXlsxButton",
         "exportCsvButton", "exportCleanDataButton", "exportErrorsButton",
         "resetWorkspaceButton", "importProgressText", "mappingProgressText",
-        "analysisProgressText", "dataLabProgressText", "importSection", "importStatusBadge", "importEmptyState",
+        "analysisProgressText", "dataLabProgressText", "smartAnalyticsProgressText", "importSection", "importStatusBadge", "importEmptyState",
         "importContent", "workbookFileName", "workbookFileSize", "workbookSheetCount",
         "workbookRowCount", "workbookColumnCount", "sheetSelector",
         "reanalyzeSheetButton", "previewDescription", "previewRowCount",
@@ -51,7 +51,18 @@
         "kpiRisk", "decisionSummary", "coverageTableBody", "decisionParetoSummary", "paretoChart",
         "abcTableBody", "forecastSeasonSelect", "forecastDaysInput", "forecastBufferInput",
         "forecastTableBody", "exportForecastCsvButton", "printDecisionReportButton",
-        "dataLabSection", "dataLabStatusBadge", "dataLabLockedState", "dataLabContent"
+        "dataLabSection", "dataLabStatusBadge", "dataLabLockedState", "dataLabContent",
+        "smartAnalyticsSection", "smartAnalyticsStatusBadge", "smartAnalyticsLockedState", "smartAnalyticsContent",
+        "smartAnalyticsScopeSelect", "smartAnalyticsModeSelect", "smartPrimaryDateSelect",
+        "smartPrimaryMeasureSelect", "smartPrimaryDimensionSelect", "smartAnalyticsUseDuckDb",
+        "runSmartAnalyticsButton", "cancelSmartAnalyticsButton", "smartAnalyticsEngineStatus",
+        "smartAnalyticsProgressBar", "smartAnalyticsGeneratedAt", "smartRows", "smartColumns",
+        "smartQualityScore", "smartInsightsCount", "smartExecutiveSummary", "smartInsightsContainer",
+        "smartSchemaTableBody", "smartQualitySummary", "smartQualityIssuesBody", "smartTrendSelector",
+        "smartTrendChart", "smartPeriodComparisonBody", "smartOutliersBody", "smartCorrelationChart",
+        "smartCorrelationsBody", "smartPivotCards", "smartChartRecommendationButtons",
+        "smartRecommendedChart", "smartPivotPreview", "smartReportContent", "smartExportXlsxButton",
+        "smartExportJsonButton", "smartPrintReportButton"
     ];
 
     const elements = {};
@@ -266,7 +277,7 @@
     }
 
     function setWorkflowStage(stage) {
-        const activeStage = Math.max(1, Math.min(5, Number(stage) || 1));
+        const activeStage = Math.max(1, Math.min(6, Number(stage) || 1));
         elements.workflowSteps.forEach((step, index) => {
             const stepNumber = index + 1;
             step.classList.toggle("is-active", stepNumber === activeStage);
@@ -282,7 +293,8 @@
             mapping: elements.mappingProgressText,
             analysis: elements.analysisProgressText,
             decision: elements.decisionProgressText,
-            dataLab: elements.dataLabProgressText
+            dataLab: elements.dataLabProgressText,
+            smartAnalytics: elements.smartAnalyticsProgressText
         };
         if (!map[stage]) throw new Error(`Unknown workflow stage: ${stage}`);
         map[stage].textContent = String(text ?? "");
@@ -300,6 +312,9 @@
         }
         if (sectionName === "dataLab") {
             return { section: elements.dataLabSection, lockedState: elements.dataLabLockedState, content: elements.dataLabContent };
+        }
+        if (sectionName === "smartAnalytics") {
+            return { section: elements.smartAnalyticsSection, lockedState: elements.smartAnalyticsLockedState, content: elements.smartAnalyticsContent };
         }
         throw new Error(`Unsupported section: ${sectionName}`);
     }
@@ -329,7 +344,8 @@
             mapping: [elements.mappingSection, 2],
             analysis: [elements.analysisSection, 3],
             decision: [elements.decisionSection, 4],
-            dataLab: [elements.dataLabSection, 5]
+            dataLab: [elements.dataLabSection, 5],
+            smartAnalytics: [elements.smartAnalyticsSection, 6]
         };
         const entry = map[sectionName];
         if (!entry) throw new Error(`Unknown section: ${sectionName}`);
@@ -805,6 +821,18 @@
         lockSection("dataLab", "Przetwórz dane lub zaimportuj workspace, aby uruchomić Edytor danych.");
         setStatusBadge(elements.dataLabStatusBadge, "Niedostępne", "neutral");
         setWorkflowProgress("dataLab", "Niedostępne");
+        lockSection("smartAnalytics", "Przetwórz dane, aby uruchomić Smart Analytics.");
+        setStatusBadge(elements.smartAnalyticsStatusBadge, "Niedostępne", "neutral");
+        setWorkflowProgress("smartAnalytics", "Niedostępne");
+        elements.smartAnalyticsProgressBar.value = 0;
+        setText(elements.smartAnalyticsGeneratedAt, "Brak wyników");
+        setText(elements.smartRows, "0");
+        setText(elements.smartColumns, "0");
+        setText(elements.smartQualityScore, "—");
+        setText(elements.smartInsightsCount, "0");
+        setDisabled(elements.smartExportXlsxButton, true);
+        setDisabled(elements.smartExportJsonButton, true);
+        setDisabled(elements.smartPrintReportButton, true);
         setWorkflowStage(1);
         closeExportMenu();
         closeHelpPopover();

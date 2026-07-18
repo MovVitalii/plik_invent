@@ -260,6 +260,29 @@ async function main() {
     checkTrue("Forecast table shows the graceful notice row instead of data", window.document.getElementById("forecastTableBody").textContent.includes("Aktualny stan zapasu"));
     check("ABC table still has 3 rows (Pareto/ABC don't need stock)", window.document.getElementById("abcTableBody").children.length, 3);
 
+    // ---- Smart Analytics: real UI + deterministic local pipeline ----
+    console.log("\n--- Smart Analytics UI ---");
+    const smartUseDuckDb = window.document.getElementById("smartAnalyticsUseDuckDb");
+    smartUseDuckDb.checked = false;
+    window.document.getElementById("smartAnalyticsModeSelect").value = "quick";
+    await PMA.smartAnalyticsEngine.run();
+    const smartResult = PMA.smartAnalyticsEngine.getResult();
+    checkTrue("Smart Analytics section is unlocked", !window.document.getElementById("smartAnalyticsSection").classList.contains("is-locked"));
+    checkTrue("Smart Analytics completes locally", smartResult?.execution?.deterministic === true && smartResult?.execution?.externalServices === false);
+    check("Smart Analytics analyzed all rows", smartResult?.datasetProfile?.rows, normalizedRows.length);
+    checkTrue("Smart Analytics profile table is rendered", window.document.getElementById("smartSchemaTableBody").children.length > 0);
+    checkTrue("Smart Analytics quality findings are rendered", window.document.getElementById("smartQualityIssuesBody").children.length > 0);
+    checkTrue("Smart Analytics report is rendered", window.document.getElementById("smartReportContent").textContent.toLowerCase().includes("podsumowanie zarządcze"));
+    check("Smart Analytics progress reaches 100", Number(window.document.getElementById("smartAnalyticsProgressBar").value), 100);
+
+    // A result based on filtered rows must be invalidated when filters change.
+    window.document.getElementById("smartAnalyticsScopeSelect").value = "filtered";
+    await PMA.smartAnalyticsEngine.run();
+    check("Filtered Smart Analytics scope is recorded", PMA.smartAnalyticsEngine.getResult()?.datasetProfile?.scope, "filtered");
+    PMA.state.setFilteredDataset(normalizedRows.slice(0, 5));
+    check("Filtered Smart Analytics result invalidates after filter change", PMA.smartAnalyticsEngine.getResult(), null);
+    PMA.state.setFilteredDataset(normalizedRows);
+
     // ---- scenario C: empty dataset must not throw ----
     console.log("\n--- scenario C: empty dataset ---");
     let emptyDatasetThrew = false;

@@ -141,8 +141,18 @@ async function main() {
   check("Order quantity respects package multiple", planned?.toOrder % 20 === 0);
   check("Forecast carries supplier and unit metadata", planned?.supplier === "Supplier A" && planned?.unit === "szt.");
 
+  PMA.state.setSmartAnalyticsResult({
+    generatedAt: "2026-07-18T12:00:00.000Z",
+    datasetProfile: { rows: 4, columns: PMA.state.get("dataset.fields.length"), scope: "all" },
+    execution: { deterministic: true, externalServices: false, statisticalEngine: "javascript-worker", sqlEngine: "javascript-fallback" },
+    report: { title: "Test", executiveSummary: [], sections: [], plainText: "Test" },
+    schema: { profiles: [] }, quality: { score: 100, grade: "A", issues: [], summary: {} }, outliers: { total: 0, findings: [] },
+    trends: { trends: [] }, periodComparisons: { comparisons: [] }, correlations: { numericPairs: [], categoryMeasure: [], categoryPairs: [] },
+    pivots: [], recommendedCharts: [], insights: []
+  });
   const workspace = PMA.spreadsheetEngine.serializeWorkspace();
-  check("Workspace schema v3 is generated", workspace.schemaVersion === 3 && workspace.dataset.stockRows.length === 1);
+  check("Workspace schema v4 is generated", workspace.schemaVersion === 4 && workspace.dataset.stockRows.length === 1);
+  check("Workspace stores deterministic Smart Analytics result", workspace.smartAnalyticsResult?.execution?.deterministic === true);
   PMA.state.resetWorkspace({ preservePreferences: true, preserveMappingProfiles: true, preserveRecentFiles: true });
   PMA.dom.resetUI();
   PMA.spreadsheetEngine.restoreWorkspace(workspace);
@@ -150,6 +160,7 @@ async function main() {
   check("Workspace restore returns all rows", PMA.state.get("dataset.normalizedRows.length") === 4);
   check("Workspace restore returns calculated columns", PMA.state.get("dataset.calculatedColumns.length") === 1);
   check("Workspace restore returns separate stock table", PMA.state.get("dataset.stockRows.length") === 1);
+  check("Workspace restore returns Smart Analytics result", PMA.state.get("smartAnalytics.result.datasetProfile.rows") === 4);
   check("No page errors", errors.length === 0, errors.map(String).join(" | "));
 
   const passed = results.filter(Boolean).length;

@@ -37,7 +37,7 @@ async function main() {
     try {
         await wait(800);
         if (serverFailed) throw serverFailed;
-        const tests = ["static-audit-test.js", "integration-test.js", "data-lab-test.js", "audit-regression-test.js", "performance-test.js"];
+        const tests = ["static-audit-test.js", "duckdb-local-test.js", "duckdb-runtime-test.js", "smart-analytics-test.js", "smart-performance-test.js", "integration-test.js", "data-lab-test.js", "audit-regression-test.js", "performance-test.js"];
         for (const test of tests) {
             const code = await run(process.execPath, [path.join(__dirname, test)], { cwd: root });
             if (code !== 0) process.exitCode = code;

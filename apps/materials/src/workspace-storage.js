@@ -11,7 +11,7 @@
     const DB_VERSION = 1;
     const STORE = "projects";
     const AUTOSAVE_ID = "__autosave__";
-    const SCHEMA_VERSION = 3;
+    const SCHEMA_VERSION = 4;
     let dbPromise = null;
 
     function openDatabase() {

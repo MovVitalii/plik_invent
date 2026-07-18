@@ -10,7 +10,7 @@
     const REQUIRED_MODULES = [
         "constants", "state", "utils", "dom", "importEngine", "mappingEngine",
         "valueNormalizationEngine", "normalizationEngine", "pivotEngine", "decisionEngine", "chartEngine", "exportEngine",
-        "spreadsheetEngine"
+        "spreadsheetEngine", "smartAnalyticsEngine", "duckdbEngine"
     ];
 
     const lifecycle = {
@@ -67,7 +67,8 @@
             PMA.pivotEngine,
             PMA.decisionEngine,
             PMA.exportEngine,
-            PMA.spreadsheetEngine
+            PMA.spreadsheetEngine,
+            PMA.smartAnalyticsEngine
         ].forEach((module) => {
             module.initialize();
             runtimeModules.push(module);

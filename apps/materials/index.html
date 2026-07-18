@@ -8,7 +8,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Materials Analytics 1.4.1</title>
+    <title>Materials Analytics 1.5.0</title>
     <script>
         (function configureFreshAssets(global, document) {
             "use strict";
@@ -121,6 +121,14 @@
             <span>
                 <strong>Edytor danych</strong>
                 <small id="dataLabProgressText">Niedostępne</small>
+            </span>
+        </button>
+        <span class="workflow-line" aria-hidden="true"></span>
+        <button class="workflow-step" type="button" data-target-section="smartAnalyticsSection" disabled>
+            <span class="workflow-number">6</span>
+            <span>
+                <strong>Smart Analytics</strong>
+                <small id="smartAnalyticsProgressText">Niedostępne</small>
             </span>
         </button>
     </nav>
@@ -711,11 +719,173 @@
             </div>
         </section>
 
+        <section id="smartAnalyticsSection" class="section-card is-locked" aria-labelledby="smartAnalyticsHeading">
+            <div class="section-heading">
+                <div>
+                    <div class="heading-row">
+                        <h2 id="smartAnalyticsHeading">6. Smart Analytics</h2>
+                        <button class="help-button" type="button" data-help="smartAnalytics" aria-label="Pomoc dotycząca Smart Analytics">?</button>
+                    </div>
+                    <p>Lokalny, deterministyczny silnik analityczny: profil danych, jakość, anomalie, trendy, porównania okresów, korelacje, rekomendowane tabele i wykresy.</p>
+                </div>
+                <div class="inline-actions">
+                    <button id="smartExportXlsxButton" class="button button-secondary button-small" type="button" disabled>Eksportuj Excel</button>
+                    <button id="smartExportJsonButton" class="button button-ghost button-small" type="button" disabled>Eksportuj JSON</button>
+                    <button id="smartPrintReportButton" class="button button-ghost button-small" type="button" disabled>Drukuj raport</button>
+                    <span id="smartAnalyticsStatusBadge" class="status-badge status-neutral">Niedostępne</span>
+                </div>
+            </div>
+
+            <div id="smartAnalyticsLockedState" class="locked-state">
+                Przetwórz dane, aby uruchomić automatyczny silnik analityczny.
+            </div>
+
+            <div id="smartAnalyticsContent" hidden>
+                <section class="smart-run-panel">
+                    <div class="control-grid smart-controls">
+                        <label>
+                            <span>Zakres danych</span>
+                            <select id="smartAnalyticsScopeSelect">
+                                <option value="all">Wszystkie czyste dane</option>
+                                <option value="filtered">Aktywne filtry z Analizy</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Tryb analizy</span>
+                            <select id="smartAnalyticsModeSelect">
+                                <option value="full">Pełny audyt</option>
+                                <option value="quick">Szybki audyt</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Kolumna daty</span>
+                            <select id="smartPrimaryDateSelect"><option value="">Automatycznie</option></select>
+                        </label>
+                        <label>
+                            <span>Główna miara</span>
+                            <select id="smartPrimaryMeasureSelect"><option value="">Automatycznie</option></select>
+                        </label>
+                        <label>
+                            <span>Główny wymiar</span>
+                            <select id="smartPrimaryDimensionSelect"><option value="">Automatycznie</option></select>
+                        </label>
+                        <label class="checkbox-label smart-duckdb-toggle">
+                            <input id="smartAnalyticsUseDuckDb" type="checkbox" checked>
+                            <span>Użyj lokalnego DuckDB-WASM do tabel przestawnych</span>
+                        </label>
+                    </div>
+                    <div class="section-actions section-actions-end">
+                        <span id="smartAnalyticsEngineStatus" class="muted-text">Silnik gotowy. Dane nie opuszczają przeglądarki.</span>
+                        <button id="cancelSmartAnalyticsButton" class="button button-ghost" type="button" hidden>Anuluj</button>
+                        <button id="runSmartAnalyticsButton" class="button button-primary" type="button">Uruchom pełną analizę</button>
+                    </div>
+                    <div class="smart-progress-row">
+                        <progress id="smartAnalyticsProgressBar" max="100" value="0">0%</progress>
+                        <span id="smartAnalyticsGeneratedAt">Brak wyników</span>
+                    </div>
+                </section>
+
+                <div class="summary-grid smart-summary-grid" aria-label="Podsumowanie Smart Analytics">
+                    <article><span>Wiersze</span><strong id="smartRows">0</strong></article>
+                    <article><span>Kolumny</span><strong id="smartColumns">0</strong></article>
+                    <article><span>Jakość danych</span><strong id="smartQualityScore">—</strong></article>
+                    <article><span>Wnioski</span><strong id="smartInsightsCount">0</strong></article>
+                </div>
+
+                <nav class="workspace-tabs smart-tabs" aria-label="Wyniki Smart Analytics">
+                    <button type="button" data-smart-tab="overview" class="is-active">Podsumowanie</button>
+                    <button type="button" data-smart-tab="schema">Kolumny</button>
+                    <button type="button" data-smart-tab="quality">Jakość</button>
+                    <button type="button" data-smart-tab="trends">Trendy</button>
+                    <button type="button" data-smart-tab="outliers">Anomalie</button>
+                    <button type="button" data-smart-tab="correlations">Zależności</button>
+                    <button type="button" data-smart-tab="recommendations">Tabele i wykresy</button>
+                    <button type="button" data-smart-tab="report">Raport</button>
+                </nav>
+
+                <section data-smart-view="overview" class="smart-view">
+                    <div class="smart-overview-grid">
+                        <article class="panel-card">
+                            <h3>Podsumowanie zarządcze</h3>
+                            <ul id="smartExecutiveSummary" class="report-list"></ul>
+                        </article>
+                        <article class="panel-card">
+                            <h3>Najważniejsze wnioski</h3>
+                            <div id="smartInsightsContainer" class="insight-list"></div>
+                        </article>
+                    </div>
+                </section>
+
+                <section data-smart-view="schema" class="smart-view" hidden>
+                    <div class="table-scroll result-table-scroll">
+                        <table>
+                            <thead><tr><th>Kolumna</th><th>Typ</th><th>Rola</th><th>Pewność</th><th>Braki</th><th>Unikalne</th><th>Zakres / przykłady</th><th>Uzasadnienie</th></tr></thead>
+                            <tbody id="smartSchemaTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section data-smart-view="quality" class="smart-view" hidden>
+                    <p id="smartQualitySummary" class="analysis-tip"></p>
+                    <div class="table-scroll result-table-scroll">
+                        <table>
+                            <thead><tr><th>Ważność</th><th>Problem</th><th>Opis</th><th>Kolumna</th></tr></thead>
+                            <tbody id="smartQualityIssuesBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section data-smart-view="trends" class="smart-view" hidden>
+                    <div class="panel-heading compact">
+                        <div><h3>Analiza trendu</h3><p>Granularność czasu i agregacja miary są dobierane automatycznie do zakresu dat oraz roli kolumny.</p></div>
+                        <label><span>Miara</span><select id="smartTrendSelector"></select></label>
+                    </div>
+                    <div class="chart-canvas-wrap"><canvas id="smartTrendChart"></canvas></div>
+                    <div class="table-scroll result-table-scroll">
+                        <table><thead><tr><th>Miara</th><th>Okres bieżący</th><th>Poprzedni</th><th>Zmiana</th><th>Zmiana %</th><th>Główny czynnik</th></tr></thead><tbody id="smartPeriodComparisonBody"></tbody></table>
+                    </div>
+                </section>
+
+                <section data-smart-view="outliers" class="smart-view" hidden>
+                    <div class="table-scroll result-table-scroll">
+                        <table><thead><tr><th>Ważność</th><th>Rekord</th><th>Kolumna</th><th>Wartość</th><th>Oczekiwany zakres</th><th>Metoda</th><th>Grupa</th></tr></thead><tbody id="smartOutliersBody"></tbody></table>
+                    </div>
+                </section>
+
+                <section data-smart-view="correlations" class="smart-view" hidden>
+                    <div class="chart-canvas-wrap"><canvas id="smartCorrelationChart"></canvas></div>
+                    <div class="table-scroll result-table-scroll">
+                        <table><thead><tr><th>Zmienna 1</th><th>Zmienna 2</th><th>Metoda</th><th>Wynik</th><th>Próba</th><th>Pewność</th></tr></thead><tbody id="smartCorrelationsBody"></tbody></table>
+                    </div>
+                    <p class="analysis-tip">Korelacja i inne miary zależności nie oznaczają związku przyczynowego.</p>
+                </section>
+
+                <section data-smart-view="recommendations" class="smart-view" hidden>
+                    <div class="smart-recommendations-grid">
+                        <article class="panel-card">
+                            <h3>Rekomendowane tabele przestawne</h3>
+                            <div id="smartPivotCards" class="recommendation-list"></div>
+                        </article>
+                        <article class="panel-card">
+                            <h3>Rekomendowane wykresy</h3>
+                            <div id="smartChartRecommendationButtons" class="recommendation-list"></div>
+                        </article>
+                    </div>
+                    <div class="chart-canvas-wrap"><canvas id="smartRecommendedChart"></canvas></div>
+                    <div id="smartPivotPreview" class="table-scroll result-table-scroll"></div>
+                </section>
+
+                <section data-smart-view="report" class="smart-view" hidden>
+                    <article id="smartReportContent" class="smart-report"></article>
+                </section>
+            </div>
+        </section>
+
     </main>
 
     <footer class="app-footer">
         <span data-app-name>Pack Materials Analytics</span>
-        <span>Wersja <span data-app-version>1.4.1</span></span>
+        <span>Wersja <span data-app-version>1.5.0</span></span>
         <span>Dane są przetwarzane lokalnie w przeglądarce.</span>
     </footer>
 
@@ -755,6 +925,24 @@
                 "src/workspace-storage.js",
                 "src/formula-engine.js",
                 "src/spreadsheet-engine.js",
+                "src/analytics/rules/analytics-rules.js",
+                "src/analytics/analytics-core.js",
+                "src/analytics/schema-profiler.js",
+                "src/analytics/semantic-role-engine.js",
+                "src/analytics/descriptive-statistics.js",
+                "src/analytics/data-quality-engine.js",
+                "src/analytics/outlier-engine.js",
+                "src/analytics/trend-engine.js",
+                "src/analytics/period-comparison-engine.js",
+                "src/analytics/correlation-engine.js",
+                "src/analytics/confidence-engine.js",
+                "src/analytics/pivot-recommender.js",
+                "src/analytics/chart-recommender.js",
+                "src/analytics/insight-engine.js",
+                "src/analytics/report-generator.js",
+                "src/analytics/analytics-orchestrator.js",
+                "src/analytics/duckdb-engine.js",
+                "src/analytics/smart-analytics-engine.js",
                 "app.js"
             ];
 

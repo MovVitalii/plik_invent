@@ -1516,7 +1516,7 @@
     function serializeWorkspace() {
         return {
             schema: "materials-analytics-workspace",
-            schemaVersion: 3,
+            schemaVersion: 4,
             appVersion: PMA.constants.APP.version,
             project: { id: projectId, name: cleanText(el("workspaceProjectName")?.value) || "Nowy projekt", createdAt: projectCreatedAt },
             import: {
@@ -1535,6 +1535,7 @@
             },
             filters: clonePlain(state.get("filters", {})),
             analysis: clonePlain(state.get("analysis", {})),
+            smartAnalyticsResult: clonePlain(state.get("smartAnalytics.result", null)),
             editor: { viewMode, filters: clonePlain(filters), sorts: clonePlain(sorts), columnWidths: Object.fromEntries(columnWidths) },
             savedAt: new Date().toISOString()
         };
@@ -1632,7 +1633,7 @@
     function restoreWorkspace(payload) {
         if (payload?.schema !== "materials-analytics-workspace" || !Array.isArray(payload.dataset?.normalizedRows) || !Array.isArray(payload.dataset?.fields)) throw new Error("Plik nie jest zgodnym workspace Materials Analytics.");
         const version = Number(payload.schemaVersion || 1);
-        if (!Number.isInteger(version) || version < 1 || version > 3) throw new Error(`Nieobsługiwana wersja schematu workspace: ${payload.schemaVersion}.`);
+        if (!Number.isInteger(version) || version < 1 || version > 4) throw new Error(`Nieobsługiwana wersja schematu workspace: ${payload.schemaVersion}.`);
 
         const restoredFields = clonePlain(payload.dataset.fields);
         const fieldIds = new Set();
@@ -1692,6 +1693,13 @@
         sorts.splice(0, sorts.length, ...(payload.editor?.sorts || []));
         columnWidths.clear(); Object.entries(payload.editor?.columnWidths || {}).forEach(([id, width]) => columnWidths.set(id, Number(width)));
         if (el("workspaceViewMode")) el("workspaceViewMode").value = viewMode;
+        const restoredSmartResult = payload.smartAnalyticsResult;
+        if (restoredSmartResult && typeof restoredSmartResult === "object"
+            && restoredSmartResult.execution?.deterministic === true
+            && restoredSmartResult.execution?.externalServices === false
+            && Number(restoredSmartResult.datasetProfile?.rows) === restoredRows.length) {
+            state.setSmartAnalyticsResult(clonePlain(restoredSmartResult));
+        }
         const mappingValid = state.validateMapping?.().isValid;
         dom.unlockSection("analysis");
         if (mappingValid) dom.unlockSection("decision"); else dom.lockSection("decision", "Mapuj pola Data, Materiał i Zużycie, aby uruchomić analizę decyzyjną.");

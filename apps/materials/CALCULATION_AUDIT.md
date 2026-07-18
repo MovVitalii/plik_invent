@@ -1,4 +1,4 @@
-# Audyt obliczeń — Materials Analytics 1.4.1
+# Audyt obliczeń — Materials Analytics 1.5.0
 
 ## Zużycie i filtrowanie
 

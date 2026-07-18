@@ -1,12 +1,13 @@
 {
   "name": "materials-analytics",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "private": true,
-  "description": "Local Excel-like workspace for materials analytics, inventory planning and data preparation.",
+  "description": "Local Excel-like workspace with deterministic Smart Analytics, materials planning and offline DuckDB-WASM.",
   "scripts": {
     "test": "node verification/run-tests.js"
   },
   "devDependencies": {
+    "@duckdb/duckdb-wasm": "^1.33.1-dev57.0",
     "jsdom": "^26.1.0"
   }
 }

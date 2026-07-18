@@ -1,95 +1,90 @@
 # Changelog
 
-## 1.4.1 — audyt integralności
+## 1.5.0 — lokalny Smart Analytics Engine
 
-### Formuły i obliczenia
+### Architektura
 
-- Dodano prawidłową, zależnościową kolejność obliczania kolumn wyliczanych.
-- Dodano wykrywanie i transakcyjne odrzucanie cykli formuł.
-- Naprawiono przepisywanie odwołań po zmianie nazwy kolumny oraz ochronę kolumn używanych przez formuły.
-- Dodano separator średnikowy, prawostronną łączność potęgowania i właściwy priorytet potęgowania względem znaku minus.
-- `IF` oblicza tylko wybraną gałąź, a `IFERROR` przechwytuje błędy ewaluacji.
-- `ROUND` działa jak oczekiwane zaokrąglenie arkuszowe: połowy od zera, ujemne miejsca oraz wartości dziesiętne podatne na błąd binarny.
-- `MIN` i `MAX` ignorują puste wartości zamiast traktować je jak zero.
+- Dodano całkowicie lokalny i deterministyczny pipeline Smart Analytics bez AI, chmury i backendu.
+- Rozdzielono logikę na profilowanie schematu, semantykę, jakość, statystyki, anomalie, trendy, porównania okresów, korelacje, rekomendacje Pivot/wykresów, wnioski i raport.
+- Dodano wersjonowaną bibliotekę reguł `analytics-rules.js`.
+- Dodano osobny Web Worker oraz automatyczny fallback do głównego wątku.
+- Workspace podniesiono do schematu v4 i rozszerzono o wynik Smart Analytics.
 
-### Edytor i filtry
+### Profilowanie i semantyka
 
-- Naprawiono przełączanie sortowania nagłówka.
-- Porównania dat używają wartości chronologicznych, a nie porównania tekstu.
-- Nieprawidłowy próg filtra liczbowego jest odrzucany.
-- Naprawiono usuwanie zaznaczonych wierszy oraz ponowne wykonanie tej operacji.
-- Wielokomórkowe wklejanie aktualizuje formuły dopiero po zapisaniu całego zakresu.
-- Zmiany filtrów, sortowania i widoku są uwzględniane przez autosave.
+- Dodano rozpoznawanie fizycznych typów kolumn oraz typów mieszanych.
+- Dodano role semantyczne: data, identyfikator, kategoria, materiał, marka, dostawca, lokalizacja, ilość, zapas, cena, koszt, waluta, procent, czas trwania, status i tekst swobodny.
+- Każda klasyfikacja zawiera confidence oraz dowody oparte na nazwie i rozkładzie wartości.
+- Dodano tryb szybki i pełny wraz z jawną metodologią próbkowania.
 
-### Import, Workspace i stan
+### Jakość danych i anomalie
 
-- Zachowano rzeczywiste numery wierszy Excel mimo pustych rekordów.
-- Zachowano pochodzenie danych z wielu plików i arkuszy.
-- Ujednolicono Workspace do schematu v3.
-- Import Workspace waliduje wersję, identyfikatory pól, definicje formuł i zależności przed zastąpieniem bieżącego projektu.
-- Brakujące lub powielone identyfikatory wierszy są regenerowane.
-- Przy odtwarzaniu projektu czyszczony jest przejściowy stan edytora, historii i podglądów.
-- Autosave zachowuje nazwę projektu i można go jednoznacznie usunąć.
+- Dodano analizę braków, unikalności, duplikatów pełnych i duplikatów identyfikatorów.
+- Dodano wykrywanie kolumn stałych, prawie stałych, typów mieszanych, błędów konwersji i podejrzanych liczb ujemnych.
+- Dodano wahania odstające metodą IQR i robust Z-score/MAD.
+- Dodano detekcję globalną oraz lokalną w obrębie odpowiednich kategorii.
+- Wyniki zawierają metodę, próg, expected range, severity, confidence i przykłady wierszy.
 
-### Zapasy i planowanie
+### Trendy i porównania okresów
 
-- Materiały są dopasowywane bez rozróżniania wielkości liter i polskich znaków.
-- Materiały występujące wyłącznie w tabeli zapasów nie pojawiają się poza aktywnym zakresem zużycia.
-- Niejednolite albo niezgodne jednostki blokują niewiarygodne wyliczenia.
-- Wieloletnie sezony liczą osobne zakresy kalendarzowe zamiast jednego zakresu przez kilka lat.
-- MOQ jest stosowane przed zaokrągleniem do krotności zamówienia.
-- Liczba materiałów w KPI używa znormalizowanej tożsamości materiału.
+- Dodano automatyczne wykrywanie głównego pola daty, miary i wymiaru.
+- Dodano dobór granularności czasu według zakresu danych.
+- Dodano role-aware aggregation: suma, średnia albo najnowszy snapshot.
+- Dodano kierunek, slope, procentową zmianę, zmienność i jakość dopasowania trendu.
+- Dodano porównania kolejnych okresów oraz ranking kategorii odpowiedzialnych za zmianę.
 
-### Eksport i bezpieczeństwo
+### Korelacje
 
-- Eksport CSV neutralizuje tekst rozpoczynający się jak formuła arkusza.
-- Ujemne wartości liczbowe pozostają liczbami i nie są modyfikowane przez ochronę CSV.
-- Potwierdzono brak `eval` oraz konstruktora `Function` w kodzie aplikacji.
+- Dodano Pearson i Spearman dla liczba–liczba.
+- Dodano eta² dla kategoria–liczba.
+- Dodano Cramér’s V dla kategoria–kategoria.
+- Identyfikatory są wykluczane z interpretacji jako miary.
+- Wyniki raportują liczebność próby, siłę, kierunek, confidence i zastrzeżenie o braku przyczynowości.
+
+### Rekomendacje i raport
+
+- Dodano automatyczne projektowanie rekomendowanych Pivot Table.
+- Dodano automatyczny dobór wykresów według struktury danych.
+- Dodano regułowy Insight Engine z priorytetem, dowodami, ograniczeniami i rekomendowanym działaniem.
+- Dodano polski raport szablonowy: executive summary, zakres, jakość, KPI, trendy, zmiany, anomalie, zależności, ryzyka, działania i metodologia.
+- Dodano eksport Smart Analytics do JSON/XLSX oraz wydruk raportu.
+
+### DuckDB-WASM i wydajność
+
+- Dołączono lokalny runtime DuckDB-WASM; aplikacja nie pobiera go z CDN.
+- Dodano opcjonalną materializację rekomendowanych Pivot Table przez lokalny SQL.
+- Dodano JavaScript fallback oraz strumieniowe akumulatory bez przechowywania tablic wartości w każdym bucketcie.
+- Poprawiono total dla `average`, `count`, `min`, `max` i `latest` — total jest liczony z surowych rekordów, nie z agregatów komórek.
+- `count` pomija puste ciągi.
+- `latest` wybiera najnowszy snapshot według daty i deterministycznego numeru kolejności źródłowej.
+- Daty w rekomendowanych pivotach są grupowane według właściwej granularności.
+
+### Uruchomienie na laptopie służbowym
+
+- Rozbudowano `START_WINDOWS.bat`.
+- Dodano serwer PowerShell z poprawną obsługą MIME dla `.wasm` i `.mjs`.
+- Zachowano wariant Python oraz skrypt `start.sh`.
+- Wszystkie zasoby runtime są lokalne.
 
 ### Weryfikacja
 
-- 12/12 kontroli statycznych.
-- 49/49 kontroli analizy decyzyjnej.
-- 27/27 kontroli edytora i Workspace.
+- 19/19 kontroli statycznych i bezpieczeństwa.
+- 17/17 kontroli lokalnego pakietu DuckDB.
+- 8/8 rzeczywistych kontroli runtime DuckDB-WASM i SQL.
+- 32/32 kontrole logiki Smart Analytics.
+- 9/9 kontroli wydajności Smart Analytics.
+- 58/58 kontroli integracyjnych aplikacji.
+- 29/29 kontroli edytora i Workspace.
 - 42/42 kontrole regresyjne.
-- 8/8 kontroli wydajności na 50 000 wierszy.
-- Łącznie **138/138** kontroli.
+- 8/8 kontroli przepływu 50 000 wierszy.
+- Łącznie **222/222**.
 
-## 1.4.0
+## 1.4.1 — audyt integralności
 
-### Import i model danych
+- Naprawiono zależności i cykle formuł, `ROUND`, leniwe `IF`/`IFERROR`, filtry i sortowanie dat.
+- Naprawiono wielokomórkowe wklejanie, strukturalne Undo/Redo, mapowanie snapshotów, jednostki, MOQ i sezony wieloletnie.
+- Dodano transakcyjny import Workspace, ochronę CSV i test 50 000 wierszy.
 
-- Dodano CSV, wiele plików, konfigurowalny wiersz nagłówków i łączenie zgodnych arkuszy.
-- Dodano tryb ogólnego arkusza bez obowiązkowego mapowania materiałowego.
-- Wszystkie kolumny źródłowe są zachowywane po mapowaniu.
-- Marka przestała być polem obowiązkowym.
+## 1.4.0 — Excel-like Data Workspace
 
-### Edytor danych
-
-- Zastąpiono prosty Data Lab edytowalnym, wirtualizowanym arkuszem.
-- Dodano edycję komórek, zaznaczanie zakresu, kopiowanie/wklejanie, dodawanie/usuwanie wierszy i kolumn.
-- Dodano zarządzanie nazwą, szerokością, kolejnością i widocznością kolumn.
-- Dodano warunkowe filtry i sortowanie wielopoziomowe.
-- Dodano Undo/Redo oparte na różnicach.
-
-### Transformacje i formuły
-
-- Dodano transformacje z podglądem i wyborem zakresu.
-- Dodano historię transformacji.
-- Dodano bezpieczne kolumny obliczeniowe z odwołaniami `[Nazwa kolumny]`.
-- Dodano edycję błędnych wierszy i ponowną walidację.
-- Dodano profil jakości kolumn.
-
-### Zapasy i planowanie
-
-- Dodano osobny import snapshotów zapasu.
-- Dodano pola lead time, MOQ, krotność zamówienia, safety stock, otwarte zamówienia i dostawcę.
-- Zapotrzebowanie uwzględnia horyzont lead time, zapas bezpieczeństwa, otwarte zamówienia, MOQ i krotność.
-- Rozbudowano tabelę i CSV planowania.
-- KPI stanu nie sumuje bezpośrednio różnych jednostek.
-
-### Projekty i eksport
-
-- Dodano projekty lokalne, autosave przez IndexedDB i fallback do localStorage.
-- Rozszerzono Workspace JSON.
-- Dodano wieloarkuszowy eksport projektu XLSX.
+- Dodano wieloplikowy import Excel/CSV, edytowalny wirtualny arkusz, transformacje, bezpieczne formuły, Undo/Redo, osobną tabelę zapasów, projekty lokalne i wieloarkuszowy eksport XLSX.

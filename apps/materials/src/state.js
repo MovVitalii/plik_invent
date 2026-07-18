@@ -187,6 +187,17 @@
                 instance: null
             },
 
+            smartAnalytics: {
+                status: "idle",
+                progress: 0,
+                stage: "",
+                message: "",
+                result: null,
+                error: null,
+                generatedAt: null,
+                sourceRevision: 0
+            },
+
             ui: {
                 activeSection: "importSection",
                 exportMenuOpen: false,
@@ -626,6 +637,7 @@
         store.analysis = cloneAnalysisDefaults();
         store.pivot = createInitialState().pivot;
         store.chart = createInitialState().chart;
+        store.smartAnalytics = createInitialState().smartAnalytics;
         if (!options.silent) {
             notify(EVENTS.DATA_NORMALIZED, { ready: false, invalidated: true });
         }
@@ -645,6 +657,10 @@
             invalidRows: store.dataset.invalidRows.length,
             duplicateRows: store.dataset.duplicateRows.length
         };
+        if (store.smartAnalytics.result || store.smartAnalytics.status !== "idle") {
+            store.smartAnalytics = createInitialState().smartAnalytics;
+            notify(EVENTS.SMART_ANALYTICS_INVALIDATED, { reason: "dataset-changed" });
+        }
         notify(EVENTS.DATA_NORMALIZED, {
             normalizedRows: store.dataset.normalizedRows.length,
             invalidRows: store.dataset.invalidRows.length,
@@ -682,6 +698,10 @@
     function setFilteredDataset(rows) {
         store.dataset.filteredRows = Array.isArray(rows) ? rows : [];
         store.dataset.statistics.filteredRows = store.dataset.filteredRows.length;
+        if (store.smartAnalytics.result?.datasetProfile?.scope === "filtered") {
+            store.smartAnalytics = createInitialState().smartAnalytics;
+            notify(EVENTS.SMART_ANALYTICS_INVALIDATED, { reason: "filters-changed" });
+        }
         notify(EVENTS.FILTERS_CHANGED, {
             filteredRows: store.dataset.filteredRows.length,
             filters: { ...store.filters, values: { ...store.filters.values } }
@@ -859,6 +879,47 @@
         if (store.chart) {
             store.chart.instance = null;
         }
+    }
+
+    function setSmartAnalyticsStatus(payload = {}) {
+        const previousStatus = store.smartAnalytics.status;
+        store.smartAnalytics.status = String(payload.status || store.smartAnalytics.status || "idle");
+        store.smartAnalytics.progress = clampProgress(payload.progress ?? store.smartAnalytics.progress);
+        store.smartAnalytics.stage = String(payload.stage || "");
+        store.smartAnalytics.message = String(payload.message || "");
+        store.smartAnalytics.error = payload.error || null;
+        const eventName = store.smartAnalytics.status === "running" && previousStatus !== "running"
+            ? EVENTS.SMART_ANALYTICS_STARTED
+            : EVENTS.SMART_ANALYTICS_PROGRESS;
+        notify(eventName, { ...store.smartAnalytics, result: undefined });
+    }
+
+    function setSmartAnalyticsResult(result) {
+        store.smartAnalytics.status = "completed";
+        store.smartAnalytics.progress = 100;
+        store.smartAnalytics.stage = "complete";
+        store.smartAnalytics.message = "Analiza zakończona.";
+        store.smartAnalytics.result = result || null;
+        store.smartAnalytics.error = null;
+        store.smartAnalytics.generatedAt = result?.generatedAt || new Date().toISOString();
+        store.smartAnalytics.sourceRevision = revision;
+        notify(EVENTS.SMART_ANALYTICS_COMPLETED, { generatedAt: store.smartAnalytics.generatedAt, result });
+    }
+
+    function setSmartAnalyticsError(error) {
+        const normalized = normalizeError(error, "Smart Analytics");
+        store.smartAnalytics.status = "error";
+        store.smartAnalytics.progress = 0;
+        store.smartAnalytics.stage = "error";
+        store.smartAnalytics.message = normalized.message;
+        store.smartAnalytics.error = normalized;
+        notify(EVENTS.SMART_ANALYTICS_FAILED, normalized);
+        return normalized;
+    }
+
+    function clearSmartAnalyticsResult(options = {}) {
+        store.smartAnalytics = createInitialState().smartAnalytics;
+        if (!options.silent) notify(EVENTS.SMART_ANALYTICS_INVALIDATED, { reason: options.reason || "manual" });
     }
 
     function setActiveSection(sectionId) {
@@ -1256,6 +1317,10 @@
         clearPivotResult,
         setChartInstance,
         destroyChart,
+        setSmartAnalyticsStatus,
+        setSmartAnalyticsResult,
+        setSmartAnalyticsError,
+        clearSmartAnalyticsResult,
         setActiveSection,
         setExportMenuOpen,
         setFieldSearch,

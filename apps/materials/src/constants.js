@@ -440,14 +440,19 @@
         EXPORT_FAILED: "pma:export-failed",
         NORMALIZATION_RULES_CHANGED: "pma:normalization-rules-changed",
         DATA_CLEANED: "pma:data-cleaned",
-        WORKSPACE_IMPORTED: "pma:workspace-imported"
+        WORKSPACE_IMPORTED: "pma:workspace-imported",
+        SMART_ANALYTICS_STARTED: "pma:smart-analytics-started",
+        SMART_ANALYTICS_PROGRESS: "pma:smart-analytics-progress",
+        SMART_ANALYTICS_COMPLETED: "pma:smart-analytics-completed",
+        SMART_ANALYTICS_FAILED: "pma:smart-analytics-failed",
+        SMART_ANALYTICS_INVALIDATED: "pma:smart-analytics-invalidated"
     });
 
     const constants = {
         APP: Object.freeze({
             name: "Pack Materials Analytics",
             shortName: "PMA",
-            version: "1.4.1",
+            version: "1.5.0",
             storageSchemaVersion: 3,
             locale: "pl-PL",
             company: "",
@@ -603,6 +608,10 @@
             dataLab: Object.freeze({
                 title: "Edytor danych",
                 message: "Arkusz zachowuje wszystkie kolumny źródłowe. Możesz edytować komórki, kopiować i wklejać zakresy, filtrować, sortować, wykonywać transformacje, tworzyć kolumny obliczeniowe, poprawiać błędne wiersze i zapisywać projekty lokalnie."
+            }),
+            smartAnalytics: Object.freeze({
+                title: "Smart Analytics",
+                message: "Silnik działa lokalnie i deterministycznie. Rozpoznaje typy oraz role kolumn, kontroluje jakość, wykrywa anomalie, analizuje trendy i zależności, a następnie tworzy rekomendowane zestawienia, wykresy i raport bez użycia zewnętrznej AI."
             })
         })
     };

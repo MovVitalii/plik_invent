@@ -196,7 +196,7 @@ async function main(){
  check("CSV export neutralizes spreadsheet formulas in text",PMA.decisionEngine.csvCell("=HYPERLINK(\"x\")").replace(/^"/,"").startsWith("'="),PMA.decisionEngine.csvCell("=HYPERLINK(\"x\")"));
 
  const workspace=PMA.spreadsheetEngine.serializeWorkspace();
- check("Workspace schema is consistently v3",workspace.schemaVersion===3&&PMA.workspaceStorage.SCHEMA_VERSION===3);
+ check("Workspace schema is consistently v4",workspace.schemaVersion===4&&PMA.workspaceStorage.SCHEMA_VERSION===4);
  check("Workspace contains source provenance",Array.isArray(workspace.import.rowProvenance)&&Array.isArray(workspace.import.sourceRowNumbers));
  await PMA.workspaceStorage.saveAutosave({...workspace,name:"Audit",project:{name:"Audit"}});
  const autosave=await PMA.workspaceStorage.loadAutosave();
