@@ -1,0 +1,12 @@
+{
+  "name": "materials-analytics",
+  "version": "1.4.1",
+  "private": true,
+  "description": "Local Excel-like workspace for materials analytics, inventory planning and data preparation.",
+  "scripts": {
+    "test": "node verification/run-tests.js"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
+}

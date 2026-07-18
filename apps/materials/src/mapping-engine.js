@@ -356,7 +356,7 @@ function calculateAutomaticMapping(headers, detectedTypes) {
     async function handleValidate() {
         try {
             if (PMA.valueNormalizationEngine?.hasUnsavedChanges?.()) {
-                throw new Error("Zapisz lub cofnij niezapisane zmiany w sekcji Normalizacja wartości.");
+                throw new Error("Dokończ aktywną operację przygotowania danych przed zmianą mapowania.");
             }
             await validateMappedData();
         } catch (error) {
@@ -564,7 +564,7 @@ function calculateAutomaticMapping(headers, detectedTypes) {
     async function handleProcessData() {
         try {
             if (PMA.valueNormalizationEngine?.hasUnsavedChanges?.()) {
-                throw new Error("Zapisz lub cofnij niezapisane zmiany w sekcji Normalizacja wartości.");
+                throw new Error("Dokończ aktywną operację przygotowania danych przed zmianą mapowania.");
             }
             let validation = state.get("validation");
             if (!validation.completed || createValidationSignature() !== lastValidationSignature) {

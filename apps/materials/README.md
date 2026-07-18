@@ -1,63 +1,137 @@
-# Pack Materials Analytics
+# Pack Materials Analytics 1.4.1 — dokumentacja techniczna
 
-Static browser application for local Excel analysis.
+## Architektura
 
-## Deployment
+Aplikacja jest statyczna i działa bez backendu. Moduły są ładowane kolejno z `index.html`:
 
-Publish the repository with GitHub Pages. Local CSS and JavaScript files receive a unique `build` query parameter on every page load, so browser cache clearing and manual asset-version changes are not required.
+- `constants.js` — definicje pól, limity, progi i wersja runtime;
+- `state.js` — centralny stan oraz zdarzenia;
+- `utils.js` — daty, liczby, tekst, bezpieczne zaokrąglanie i walidacja plików;
+- `import-engine.js` — Excel/CSV, wiele plików, arkusze i nagłówki;
+- `mapping-engine.js` — mapowanie źródła na role analityczne;
+- `value-normalization-engine.js` — deterministyczne techniczne ujednolicanie wartości, bez osobnej sekcji UI;
+- `normalization-engine.js` — walidacja, zachowanie źródła i budowa rekordu analitycznego;
+- `pivot-engine.js` — filtry, Pivot Table i podsumowania;
+- `decision-engine.js` — Coverage, ABC/Pareto i planowanie zapotrzebowania;
+- `chart-engine.js` — wykresy;
+- `export-engine.js` — eksport analizy;
+- `workspace-storage.js` — IndexedDB i fallback do localStorage;
+- `formula-engine.js` — parser/evaluator formuł bez wykonania kodu;
+- `spreadsheet-engine.js` — wirtualny arkusz, transformacje, jakość, zapasy, Workspace i eksport projektu;
+- `app.js` — inicjalizacja i koordynacja modułów.
 
-For each update:
+## Import
 
-```bash
-git add .
-git commit -m "Describe the change"
-git push
+Obsługiwane formaty:
+
+```text
+.xlsx, .xls, .xlsb, .csv
 ```
 
-Imported workbooks, source rows and processed rows remain in memory only. Persistent browser storage is limited to preferences, mapping profiles, recent file names and user-defined value-normalization rules.
+Import pozwala:
 
-## Column mapping and value normalization
+- wskazać wiersz nagłówków;
+- wybrać arkusz;
+- wczytać wiele plików;
+- połączyć arkusze o zgodnym układzie kolumn;
+- zachować nazwę pliku, arkusza i rzeczywisty numer wiersza źródłowego;
+- otworzyć dane jako ogólny arkusz lub przejść do mapowania materiałowego.
 
-Column mapping answers: **which source column contains a system field?**
+## Mapowanie
 
-Value normalization answers: **which different source values should be treated as one value?**
+Minimalny zestaw do analizy zużycia:
 
-The application automatically removes technical differences such as extra whitespace and letter case. Built-in aliases standardize common units and shifts. The user can additionally create persistent aliases, for example:
+```text
+Data + Materiał + Zużycie
+```
 
-- `hm` → `H&M`
-- `H and M` → `H&M`
-- `Adhesive Tape` → `Packing Tape`
+`Marka` jest opcjonalna. `Aktualny stan zapasu` jest inną miarą niż `Zużycie`:
 
-The original workbook is never changed. Normalized records keep an internal audit of values that were changed. Semantic aliases are only applied after the user saves a rule.
+- `Zużycie` opisuje przepływ w okresie;
+- `Aktualny stan zapasu` opisuje snapshot dostępnej ilości.
 
-Unit aliases do not perform quantity conversion. Values such as `g` and `kg`, or `cm` and `m`, remain separate unless a dedicated conversion mechanism is added.
+Najlepszą praktyką jest importowanie zapasów w osobnej tabeli w zakładce `Zapasy`.
 
-See `VALUE_NORMALIZATION_GUIDE.md` for usage details.
+## Edytor danych
 
-## Duplicate detection
+### Arkusz
 
-Duplicates are detected by a mapped unique record/operation ID when available. Without such an ID, only fully identical source rows are treated as duplicates. Order ID alone is not treated as a unique row identifier because one order may contain multiple material operations. Validation cards are disjoint: `Błędne` excludes duplicates, while `Duplikaty` is reported separately.
+- wszystkie oryginalne kolumny są zachowane;
+- komórki są edytowalne;
+- zakres można zaznaczyć i kopiować/wklejać jako TSV;
+- można dodawać i usuwać wiersze/kolumny;
+- kolumny można zmieniać nazwą, szerokością, kolejnością i widocznością;
+- tabela jest renderowana wirtualnie, aby ograniczyć liczbę elementów DOM;
+- sortowanie wielopoziomowe i filtry są zapisywane przez autosave.
 
-## Calculation rules
+### Transformacje
 
-- Summary cards (`Suma`, `Średnia`, `Minimum`, `Maksimum`) are calculated from filtered source values, not from already aggregated pivot cells.
-- `Liczba rekordów` counts source records in each group.
-- Pivot footers use the complete filtered dataset and weighted averages.
-- Derived date fields are dimensions only and cannot be used as numeric measures.
-- Duplicate records are detected by a mapped unique operation ID, or by a fully identical source row when no such ID exists.
+Operacje:
 
-## Seasonal periods
+- zamiana tekstu, w tym regex w formie `/wzorzec/gi`;
+- Trim i usuwanie znaków niedrukowalnych;
+- wielkie/małe litery i Proper Case;
+- Fill Down / Fill Up;
+- konwersja na liczbę lub datę;
+- zaokrąglenie i wartość bezwzględna;
+- usuwanie pustych wierszy;
+- usuwanie pełnych duplikatów.
 
-The application keeps two separate date dimensions:
+Każda operacja ma podgląd i może działać na całym zbiorze, po filtrach albo na zaznaczeniu. Undo/Redo przechowuje różnice, a nie pełne kopie datasetu.
 
-- `Pora roku (ogólnie)` — Zima, Wiosna, Lato, Jesień; useful only for broad comparisons across years.
-- `Okres sezonowy` — a continuous period tied to a specific year, for example `Zima 2025/2026`.
+### Formuły
 
-Winter is assigned as follows:
+Parser obsługuje zależności między kolumnami obliczeniowymi i wylicza je topologicznie. Zależności cykliczne są odrzucane przed modyfikacją projektu. Zmiana nazwy kolumny przepisuje jej odwołania w formułach, a kolumna używana przez inną formułę jest chroniona przed usunięciem.
 
-- January and February 2026 → `Zima 2025/2026`
-- December 2026 → `Zima 2026/2027`
+Funkcje:
 
-The quick seasonal analysis and seasonal filter use `Okres sezonowy`, preventing December from being silently combined with January–February of the wrong winter.
+```text
+IF, IFERROR, ISBLANK, ROUND, ABS, COALESCE, CONCAT,
+UPPER, LOWER, LEN, MIN, MAX, DATE_DIFF_DAYS
+```
 
-Seasonal periods are ordered by a hidden numeric `seasonSortKey`. The application does not parse the visible label, so changing the label format or interface language does not break chronological sorting.
+`IF` i `IFERROR` są ewaluowane leniwie. `ROUND` stosuje zaokrąglenie połówkowe od zera i obsługuje ujemną liczbę miejsc.
+
+### Błędy
+
+Wiersze, które nie przechodzą walidacji, nie są bezpowrotnie usuwane. Użytkownik może poprawić wartości źródłowe i uruchomić ponowną walidację.
+
+### Jakość
+
+Profil obejmuje liczbę pustych wartości, unikalność, typ, minimum, maksimum, średnią i ocenę kolumny.
+
+## Osobna tabela zapasów
+
+Obsługiwane role:
+
+```text
+Materiał, Stan zapasu, Data snapshotu, Jednostka, Lead time,
+MOQ, Krotność zamówienia, Safety stock, Otwarte zamówienia, Dostawca
+```
+
+Dla wielu snapshotów wybierany jest najnowszy zapis według daty dla każdego materiału. Identyfikator materiału jest normalizowany względem wielkości liter i polskich znaków. Niejednolite jednostki zużycia albo niezgodność jednostki zapasu blokują niewiarygodny wynik zamówienia.
+
+## Workspace
+
+Projekt zawiera dane, pola, mapowanie, filtry, kolumny obliczeniowe, historię transformacji, informacje źródłowe i tabelę zapasów.
+
+- schemat: v3;
+- autosave: IndexedDB;
+- fallback: localStorage, gdy IndexedDB jest niedostępne;
+- transfer między przeglądarkami: Workspace JSON;
+- import jest transakcyjny i waliduje strukturę oraz zależności przed zastąpieniem bieżącego stanu;
+- eksport projektu: wieloarkuszowy XLSX.
+
+## Bezpieczeństwo
+
+Dane są przetwarzane lokalnie. Parser formuł nie wykonuje kodu JavaScript i nie korzysta z `eval` ani konstruktora `Function`. Eksport CSV neutralizuje tekst, który aplikacja arkuszowa mogłaby uruchomić jako formułę.
+
+## Testy
+
+- `verification/static-audit-test.js` — 12 kontroli;
+- `verification/integration-test.js` — 49 kontroli analizy decyzyjnej;
+- `verification/data-lab-test.js` — 27 kontroli workspace;
+- `verification/audit-regression-test.js` — 42 kontrole regresyjne;
+- `verification/performance-test.js` — 8 kontroli na 50 000 wierszy.
+
+Łącznie: **138/138**.

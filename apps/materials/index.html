@@ -8,7 +8,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Excel Materials Analytics · Materials</title>
+    <title>Materials Analytics 1.4.1</title>
     <script>
         (function configureFreshAssets(global, document) {
             "use strict";
@@ -43,13 +43,13 @@
         <div class="header-actions">
             <label class="button button-primary file-button" for="excelFileInput">
                 <span aria-hidden="true">＋</span>
-                Wczytaj Excel
+                Wczytaj dane
             </label>
             <input
                 id="excelFileInput"
                 class="visually-hidden"
                 type="file"
-                accept=".xlsx,.xls,.xlsb,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                accept=".xlsx,.xls,.xlsb,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" multiple
             >
 
             <div class="export-control">
@@ -71,6 +71,11 @@
                     <button id="exportErrorsButton" type="button" role="menuitem">Raport błędów · Excel</button>
                 </div>
             </div>
+
+            <label class="button button-ghost file-button" for="dataLabWorkspaceInput">
+                Importuj workspace
+            </label>
+            <input id="dataLabWorkspaceInput" class="visually-hidden" type="file" accept=".json,application/json">
 
             <button id="resetWorkspaceButton" class="button button-ghost" type="button">
                 Wyczyść
@@ -102,6 +107,22 @@
                 <small id="analysisProgressText">Niedostępne</small>
             </span>
         </button>
+        <span class="workflow-line" aria-hidden="true"></span>
+        <button class="workflow-step" type="button" data-target-section="decisionSection" disabled>
+            <span class="workflow-number">4</span>
+            <span>
+                <strong>Decyzje</strong>
+                <small id="decisionProgressText">Niedostępne</small>
+            </span>
+        </button>
+        <span class="workflow-line" aria-hidden="true"></span>
+        <button class="workflow-step" type="button" data-target-section="dataLabSection" disabled>
+            <span class="workflow-number">5</span>
+            <span>
+                <strong>Edytor danych</strong>
+                <small id="dataLabProgressText">Niedostępne</small>
+            </span>
+        </button>
     </nav>
 
     <main id="mainContent" class="app-main">
@@ -119,8 +140,8 @@
 
             <div id="importEmptyState" class="upload-empty-state">
                 <div class="upload-icon" aria-hidden="true">⇧</div>
-                <h3>Przeciągnij plik Excel tutaj</h3>
-                <p>Obsługiwane formaty: XLSX, XLS i XLSB. Maksymalny rozmiar: 100 MB.</p>
+                <h3>Przeciągnij pliki Excel lub CSV tutaj</h3>
+                <p>Obsługiwane formaty: XLSX, XLS, XLSB i CSV. Możesz wybrać wiele plików. Maksymalny rozmiar pojedynczego pliku: 100 MB.</p>
                 <label class="button button-primary" for="excelFileInput">Wybierz plik</label>
                 <small>Skrót klawiaturowy: Ctrl/Cmd + O</small>
             </div>
@@ -134,14 +155,11 @@
                     <article><span>Kolumny</span><strong id="workbookColumnCount">0</strong></article>
                 </div>
 
-                <div class="control-grid import-controls">
-                    <label>
-                        <span>Arkusz</span>
-                        <select id="sheetSelector"></select>
-                    </label>
-                    <button id="reanalyzeSheetButton" class="button button-secondary align-end" type="button" disabled>
-                        Przeanalizuj ponownie
-                    </button>
+                <div class="control-grid import-controls import-controls-extended">
+                    <label><span>Arkusz</span><select id="sheetSelector"></select></label>
+                    <label><span>Wiersz nagłówków</span><input id="headerRowNumber" type="number" min="1" value="1"></label>
+                    <button id="reanalyzeSheetButton" class="button button-secondary align-end" type="button" disabled>Przeanalizuj ponownie</button>
+                    <button id="combineSheetsButton" class="button button-secondary align-end" type="button" disabled>Połącz zgodne arkusze</button>
                 </div>
 
                 <div class="table-panel">
@@ -185,6 +203,10 @@
             </div>
 
             <div id="mappingContent" hidden>
+                <div class="analysis-tip mapping-quantity-note">
+                    <strong>Zużycie / ilość wykorzystana</strong> oznacza ilość zużytą w każdym rekordzie i jest polem wymaganym.
+                    <strong>Aktualny stan zapasu</strong> to osobna, opcjonalna wartość pozostała w magazynie. Nie da się jej wyliczyć wyłącznie z zużycia bez stanu początkowego i przyjęć.
+                </div>
                 <div class="mapping-layout">
                     <aside class="source-columns-panel">
                         <div class="panel-heading compact">
@@ -210,57 +232,7 @@
                     </div>
                 </div>
 
-                <section class="value-normalization-panel" aria-labelledby="valueNormalizationHeading">
-                    <div class="panel-heading compact">
-                        <div>
-                            <h3 id="valueNormalizationHeading">Normalizacja wartości</h3>
-                            <p>Łącz różne zapisy tej samej wartości, np. „H&amp;M”, „hm” i „H and M”. Oryginalny plik nie jest zmieniany.</p>
-                        </div>
-                        <span id="normalizationStatusBadge" class="status-badge status-neutral">Wybierz pole</span>
-                    </div>
 
-                    <div class="normalization-controls">
-                        <label>
-                            <span>Pole do sprawdzenia</span>
-                            <select id="normalizationFieldSelector"></select>
-                        </label>
-                        <button id="refreshNormalizationButton" class="button button-secondary align-end" type="button">
-                            Odśwież wartości
-                        </button>
-                        <button id="saveNormalizationRulesButton" class="button button-primary align-end" type="button" disabled>
-                            Zapisz reguły
-                        </button>
-                        <button id="clearNormalizationRulesButton" class="button button-ghost align-end" type="button" disabled>
-                            Usuń reguły pola
-                        </button>
-                    </div>
-
-                    <div class="normalization-summary" aria-label="Podsumowanie normalizacji wartości">
-                        <article><span>Warianty źródłowe</span><strong id="normalizationSourceVariants">0</strong></article>
-                        <article><span>Wartości docelowe</span><strong id="normalizationTargetValues">0</strong></article>
-                        <article><span>Aktywne reguły</span><strong id="normalizationActiveRules">0</strong></article>
-                        <article><span>Scalone rekordy</span><strong id="normalizationAffectedRows">0</strong></article>
-                    </div>
-
-                    <div id="normalizationNotice" class="normalization-notice" role="status">
-                        Najpierw zakończ mapowanie kolumn. Techniczne różnice w wielkości liter i odstępach są łączone automatycznie.
-                    </div>
-
-                    <div class="table-scroll normalization-table-scroll">
-                        <table id="normalizationTable">
-                            <thead>
-                                <tr>
-                                    <th>Wartości źródłowe</th>
-                                    <th class="is-number">Rekordy</th>
-                                    <th>Wartość docelowa</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="normalizationTableBody"></tbody>
-                        </table>
-                    </div>
-                    <datalist id="normalizationTargetSuggestions"></datalist>
-                </section>
 
                 <section class="validation-panel" aria-labelledby="validationHeading">
                     <div class="panel-heading compact">
@@ -284,7 +256,8 @@
 
                 <div class="section-actions">
                     <button id="backToImportButton" class="button button-ghost" type="button">Wróć do importu</button>
-                    <button id="processDataButton" class="button button-primary" type="button" disabled>Przetwórz dane</button>
+                    <button id="openRawWorkspaceButton" class="button button-secondary" type="button">Otwórz jako ogólny arkusz</button>
+                    <button id="processDataButton" class="button button-primary" type="button" disabled>Przetwórz do analizy materiałów</button>
                 </div>
             </div>
         </section>
@@ -437,11 +410,312 @@
                 </section>
             </div>
         </section>
+
+        <section id="decisionSection" class="section-card is-locked" aria-labelledby="decisionHeading">
+            <div class="section-heading">
+                <div>
+                    <div class="heading-row">
+                        <h2 id="decisionHeading">4. Analiza decyzyjna</h2>
+                        <button class="help-button" type="button" data-help="decision" aria-label="Pomoc dotycząca analizy decyzyjnej">?</button>
+                    </div>
+                    <p>Pareto, ABC, pokrycie zapasu, ryzyko braków i szacowane zapotrzebowanie. Korzysta z tych samych filtrów co Analiza.</p>
+                </div>
+                <div class="inline-actions">
+                    <button id="printDecisionReportButton" class="button button-ghost button-small" type="button" disabled>Drukuj raport</button>
+                    <span id="decisionStatusBadge" class="status-badge status-neutral">Niedostępne</span>
+                </div>
+            </div>
+
+            <div id="decisionLockedState" class="locked-state">
+                Przetwórz dane, aby zobaczyć analizę decyzyjną.
+            </div>
+
+            <div id="decisionContent" hidden>
+                <div id="decisionStockNotice" class="analysis-tip" role="status" hidden></div>
+
+                <nav class="segmented-control decision-tabs" aria-label="Widok analizy decyzyjnej">
+                    <button type="button" data-decision-tab="dashboard" class="is-active" aria-pressed="true">Dashboard</button>
+                    <button type="button" data-decision-tab="coverage" aria-pressed="false">Pokrycie i ryzyko</button>
+                    <button type="button" data-decision-tab="pareto" aria-pressed="false">Pareto / ABC</button>
+                    <button type="button" data-decision-tab="forecast" aria-pressed="false">Zapotrzebowanie</button>
+                </nav>
+
+                <section class="decision-view" data-decision-view="dashboard">
+                    <div class="summary-grid" aria-label="Kluczowe wskaźniki">
+                        <article><span>Zużycie</span><strong id="kpiUsed">0</strong></article>
+                        <article><span>Aktualny stan zapasu</span><strong id="kpiStock">—</strong></article>
+                        <article><span>Liczba materiałów</span><strong id="kpiMaterials">0</strong></article>
+                        <article><span>Materiały z ryzykiem</span><strong id="kpiRisk">—</strong></article>
+                    </div>
+                    <div id="decisionSummary" class="analysis-tip"></div>
+                </section>
+
+                <section class="decision-view" data-decision-view="coverage" hidden>
+                    <div class="table-scroll result-table-scroll">
+                        <table id="coverageTable">
+                            <thead>
+                                <tr>
+                                    <th>Materiał</th>
+                                    <th>Śr. dzienne zużycie</th>
+                                    <th>Aktualny stan zapasu</th>
+                                    <th>Dni obserwacji</th>
+                                    <th>Zakres kalendarzowy</th>
+                                    <th>Gęstość danych</th>
+                                    <th>Pokrycie (dni)</th>
+                                    <th>Wiarygodność</th>
+                                    <th>Ryzyko</th>
+                                </tr>
+                            </thead>
+                            <tbody id="coverageTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="decision-view" data-decision-view="pareto" hidden>
+                    <p id="decisionParetoSummary" class="analysis-tip"></p>
+                    <div class="chart-canvas-wrap">
+                        <canvas id="paretoChart"></canvas>
+                    </div>
+                    <div class="table-scroll result-table-scroll">
+                        <table id="abcTable">
+                            <thead>
+                                <tr>
+                                    <th>Materiał</th>
+                                    <th>Zużycie</th>
+                                    <th>Udział</th>
+                                    <th>Klasa</th>
+                                </tr>
+                            </thead>
+                            <tbody id="abcTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="decision-view" data-decision-view="forecast" hidden>
+                    <div class="panel-heading compact">
+                        <div>
+                            <h3>Szacowane zapotrzebowanie sezonowe</h3>
+                            <p>Obliczenie korzysta z aktywnych filtrów z sekcji Analiza i pokazuje średnie tempo zużycia, bufor oraz ilość do zamówienia.</p>
+                        </div>
+                        <button id="exportForecastCsvButton" class="button button-secondary button-small" type="button">Eksportuj CSV</button>
+                    </div>
+                    <div class="filters-grid">
+                        <label>
+                            <span>Sezon</span>
+                            <select id="forecastSeasonSelect">
+                                <option value="auto">Najbliższy sezon</option>
+                                <option value="Zima">Zima</option>
+                                <option value="Wiosna">Wiosna</option>
+                                <option value="Lato">Lato</option>
+                                <option value="Jesień">Jesień</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Horyzont (dni)</span>
+                            <input id="forecastDaysInput" type="number" min="1" max="365" value="90">
+                        </label>
+                        <label>
+                            <span>Bufor bezpieczeństwa (%)</span>
+                            <input id="forecastBufferInput" type="number" min="0" max="100" value="15">
+                        </label>
+                    </div>
+                    <div class="table-scroll result-table-scroll">
+                        <table id="forecastTable">
+                            <thead>
+                                <tr>
+                                    <th>Materiał</th>
+                                    <th>Śr. dzienne zużycie</th>
+                                    <th>Lead time</th>
+                                    <th>Zapotrzebowanie + bufor</th>
+                                    <th>Aktualny stan zapasu</th>
+                                    <th>Otwarte zamówienia</th>
+                                    <th>MOQ / krotność</th>
+                                    <th>Do zamówienia</th>
+                                    <th>Dni obserwacji</th>
+                                    <th>Zakres kalendarzowy</th>
+                                    <th>Gęstość danych</th>
+                                    <th>Wiarygodność</th>
+                                </tr>
+                            </thead>
+                            <tbody id="forecastTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <section id="dataLabSection" class="section-card is-locked" aria-labelledby="dataLabHeading">
+            <div class="section-heading">
+                <div>
+                    <div class="heading-row">
+                        <h2 id="dataLabHeading">5. Edytor danych</h2>
+                        <button class="help-button" type="button" data-help="dataLab" aria-label="Pomoc dotycząca edytora danych">?</button>
+                    </div>
+                    <p>Pełny arkusz roboczy: edycja komórek, filtry, sortowanie, transformacje, kolumny obliczeniowe, błędy i osobna tabela zapasów.</p>
+                </div>
+                <span id="dataLabStatusBadge" class="status-badge status-neutral">Niedostępne</span>
+            </div>
+
+            <div id="dataLabLockedState" class="locked-state">
+                Przetwórz dane, aby uruchomić edytor arkusza.
+            </div>
+
+            <div id="dataLabContent" hidden>
+                <nav class="workspace-tabs" aria-label="Narzędzia edytora danych">
+                    <button class="workspace-tab is-active" type="button" data-workspace-tab="editor">Arkusz</button>
+                    <button class="workspace-tab" type="button" data-workspace-tab="errors">Błędy <span id="workspaceErrorCount">0</span></button>
+                    <button class="workspace-tab" type="button" data-workspace-tab="transform">Transformacje</button>
+                    <button class="workspace-tab" type="button" data-workspace-tab="formula">Kolumny obliczeniowe</button>
+                    <button class="workspace-tab" type="button" data-workspace-tab="quality">Jakość</button>
+                    <button class="workspace-tab" type="button" data-workspace-tab="stock">Zapasy</button>
+                    <button class="workspace-tab" type="button" data-workspace-tab="workspace">Projekty</button>
+                </nav>
+
+                <section class="workspace-view" data-workspace-view="editor">
+                    <div class="workspace-toolbar workspace-toolbar-primary">
+                        <label class="search-field"><span>Szukaj</span><input id="workspaceSearchInput" type="search" placeholder="Szukaj we wszystkich widocznych kolumnach"></label>
+                        <label><span>Widok kolumn</span><select id="workspaceViewMode"><option value="source" selected>Źródłowe + obliczeniowe</option><option value="analysis">Analityczne</option><option value="all">Wszystkie</option></select></label>
+                        <button id="workspaceUndoButton" class="button button-ghost button-small" type="button" disabled>Cofnij</button>
+                        <button id="workspaceRedoButton" class="button button-ghost button-small" type="button" disabled>Ponów</button>
+                        <button id="workspaceAddRowButton" class="button button-secondary button-small" type="button">Dodaj wiersz</button>
+                        <button id="workspaceAddColumnButton" class="button button-secondary button-small" type="button">Dodaj kolumnę</button>
+                        <button id="workspaceDeleteRowsButton" class="button button-secondary button-small" type="button" disabled>Usuń zaznaczone</button>
+                        <button id="workspaceExportWorkbookButton" class="button button-primary button-small" type="button">Eksportuj projekt XLSX</button>
+                    </div>
+
+                    <div class="workspace-builder-grid">
+                        <section class="workspace-builder-card">
+                            <h3>Filtry kolumn</h3>
+                            <div class="workspace-inline-form">
+                                <select id="workspaceFilterField"></select>
+                                <select id="workspaceFilterOperator">
+                                    <option value="contains">Zawiera</option><option value="equals">Równe</option><option value="not-equals">Różne</option>
+                                    <option value="starts-with">Zaczyna się od</option><option value="ends-with">Kończy się na</option>
+                                    <option value="greater-than">Większe niż</option><option value="greater-or-equal">Większe lub równe</option>
+                                    <option value="less-than">Mniejsze niż</option><option value="less-or-equal">Mniejsze lub równe</option>
+                                    <option value="is-empty">Puste</option><option value="is-not-empty">Niepuste</option>
+                                </select>
+                                <input id="workspaceFilterValue" type="text" placeholder="Wartość">
+                                <button id="workspaceAddFilterButton" class="button button-secondary button-small" type="button">Dodaj</button>
+                            </div>
+                            <div id="workspaceActiveFilters" class="workspace-chips"><span class="muted">Brak filtrów.</span></div>
+                        </section>
+                        <section class="workspace-builder-card">
+                            <h3>Sortowanie wielopoziomowe</h3>
+                            <div class="workspace-inline-form">
+                                <select id="workspaceSortField"></select>
+                                <select id="workspaceSortDirection"><option value="asc">Rosnąco</option><option value="desc">Malejąco</option></select>
+                                <button id="workspaceAddSortButton" class="button button-secondary button-small" type="button">Dodaj</button>
+                            </div>
+                            <div id="workspaceActiveSorts" class="workspace-chips"><span class="muted">Brak sortowania.</span></div>
+                        </section>
+                    </div>
+
+                    <div class="workspace-column-bar">
+                        <label><span>Aktywna kolumna</span><select id="workspaceColumnSelector"></select></label>
+                        <button id="workspaceRenameColumnButton" class="button button-ghost button-small" type="button">Zmień nazwę</button>
+                        <button id="workspaceMoveColumnLeftButton" class="button button-ghost button-small" type="button">←</button>
+                        <button id="workspaceMoveColumnRightButton" class="button button-ghost button-small" type="button">→</button>
+                        <button id="workspaceHideColumnButton" class="button button-ghost button-small" type="button">Ukryj / pokaż</button>
+                        <button id="workspaceDeleteColumnButton" class="button button-ghost button-small" type="button">Usuń kolumnę</button>
+                        <label><span>Szerokość</span><input id="workspaceColumnWidth" type="number" min="70" max="600" step="10" value="160"></label>
+                    </div>
+
+                    <div id="workspaceGridViewport" class="workspace-grid-viewport" tabindex="0" aria-label="Edytowalny arkusz danych">
+                        <table id="workspaceGrid" class="workspace-grid"><thead id="workspaceGridHead"></thead><tbody id="workspaceGridBody"></tbody></table>
+                    </div>
+                    <div class="workspace-statusbar">
+                        <span id="workspaceGridStatus">0 wierszy</span>
+                        <span id="workspaceSelectionStatus">Brak zaznaczenia</span>
+                        <span>Dwuklik/Enter: edycja · Ctrl+C/Ctrl+V: kopiuj/wklej · Shift+klik: zakres</span>
+                    </div>
+                </section>
+
+                <section class="workspace-view" data-workspace-view="errors" hidden>
+                    <div class="panel-heading compact"><div><h3>Wiersze wymagające poprawy</h3><p>Nie są tracone. Edytuj wartości źródłowe i uruchom ponowną walidację.</p></div><button id="workspaceRevalidateAllButton" class="button button-primary button-small" type="button">Waliduj wszystkie</button></div>
+                    <div class="table-scroll"><table><thead id="workspaceErrorsHead"></thead><tbody id="workspaceErrorsBody"></tbody></table></div>
+                    <p id="workspaceErrorsStatus" class="analysis-tip">Brak błędnych wierszy.</p>
+                </section>
+
+                <section class="workspace-view" data-workspace-view="transform" hidden>
+                    <div class="panel-heading compact"><div><h3>Transformacje danych</h3><p>Operacje działają na całym zbiorze, tylko wierszach po filtrach albo zaznaczonym zakresie. Każdy krok można cofnąć i ponowić.</p></div></div>
+                    <div class="workspace-transform-grid">
+                        <label><span>Kolumna</span><select id="workspaceTransformField"></select></label>
+                        <label><span>Zakres</span><select id="workspaceTransformScope"><option value="all">Wszystkie wiersze</option><option value="filtered">Wiersze po filtrach</option><option value="selected">Zaznaczone wiersze</option></select></label>
+                        <label><span>Operacja</span><select id="workspaceTransformOperation">
+                            <option value="replace">Zamień tekst</option><option value="trim">Usuń spacje brzegowe</option><option value="clean">Usuń znaki niedrukowalne</option>
+                            <option value="upper">WIELKIE LITERY</option><option value="lower">małe litery</option><option value="proper">Każde Słowo Wielką Literą</option>
+                            <option value="fill-down">Wypełnij w dół</option><option value="fill-up">Wypełnij w górę</option>
+                            <option value="number">Konwertuj na liczbę</option><option value="date">Konwertuj na datę</option><option value="round">Zaokrąglij</option><option value="abs">Wartość bezwzględna</option>
+                            <option value="remove-empty">Usuń wiersze z pustą wartością</option><option value="remove-duplicates">Usuń pełne duplikaty</option>
+                        </select></label>
+                        <label><span>Parametr 1</span><input id="workspaceTransformArg1" type="text" placeholder="np. tekst lub liczba miejsc"></label>
+                        <label><span>Parametr 2</span><input id="workspaceTransformArg2" type="text" placeholder="np. zamiennik"></label>
+                    </div>
+                    <div class="inline-actions"><button id="workspacePreviewTransformButton" class="button button-secondary" type="button">Podgląd</button><button id="workspaceApplyTransformButton" class="button button-primary" type="button">Zastosuj</button></div>
+                    <div id="workspaceTransformPreview" class="analysis-tip">Wybierz transformację.</div>
+                    <div class="panel-heading compact"><div><h3>Historia transformacji</h3></div></div>
+                    <ol id="workspaceTransformHistory" class="data-lab-history"><li>Brak kroków.</li></ol>
+                </section>
+
+                <section class="workspace-view" data-workspace-view="formula" hidden>
+                    <div class="panel-heading compact"><div><h3>Kolumny obliczeniowe</h3><p>Formuły używają nazw kolumn w nawiasach kwadratowych, np. <code>[Zużycie] * [Cena]</code>.</p></div></div>
+                    <div class="workspace-formula-grid">
+                        <label><span>Nazwa nowej kolumny</span><input id="workspaceFormulaName" type="text" placeholder="Wartość zużycia"></label>
+                        <label><span>Typ wyniku</span><select id="workspaceFormulaType"><option value="number">Liczba</option><option value="text">Tekst</option><option value="date">Data</option><option value="boolean">Tak / Nie</option></select></label>
+                        <label class="workspace-formula-expression"><span>Formuła</span><textarea id="workspaceFormulaExpression" rows="3" placeholder="ROUND([Zużycie] * [Cena jednostkowa], 2)"></textarea></label>
+                    </div>
+                    <p class="analysis-tip">Obsługiwane: +, −, *, /, nawiasy oraz IF, ROUND, ABS, COALESCE, CONCAT, UPPER, LOWER, LEN, DATE_DIFF_DAYS.</p>
+                    <div class="inline-actions"><button id="workspacePreviewFormulaButton" class="button button-secondary" type="button">Podgląd</button><button id="workspaceAddFormulaButton" class="button button-primary" type="button">Dodaj kolumnę</button></div>
+                    <div id="workspaceFormulaPreview" class="analysis-tip">Wprowadź formułę.</div>
+                    <div class="table-scroll"><table><thead><tr><th>Kolumna</th><th>Typ</th><th>Formuła</th><th>Akcje</th></tr></thead><tbody id="workspaceFormulaList"></tbody></table></div>
+                </section>
+
+                <section class="workspace-view" data-workspace-view="quality" hidden>
+                    <div class="panel-heading compact"><div><h3>Profil jakości danych</h3><p>Puste wartości, unikalność, typy, błędy konwersji i statystyki.</p></div><button id="workspaceRefreshQualityButton" class="button button-secondary button-small" type="button">Odśwież</button></div>
+                    <div class="summary-grid data-quality-kpis"><article><span>Wiersze</span><strong id="workspaceQualityRows">0</strong></article><article><span>Kolumny</span><strong id="workspaceQualityColumns">0</strong></article><article><span>Puste komórki</span><strong id="workspaceQualityEmpty">0</strong></article><article><span>Duplikaty</span><strong id="workspaceQualityDuplicates">0</strong></article></div>
+                    <div class="table-scroll"><table><thead><tr><th>Kolumna</th><th>Typ</th><th>Puste</th><th>Unikalne</th><th>Min</th><th>Max</th><th>Średnia</th><th>Ocena</th></tr></thead><tbody id="workspaceQualityBody"></tbody></table></div>
+                </section>
+
+                <section class="workspace-view" data-workspace-view="stock" hidden>
+                    <div class="panel-heading compact"><div><h3>Osobna tabela aktualnych zapasów</h3><p>Importuj snapshot zapasu niezależnie od transakcji zużycia. Decision Analytics użyje najnowszego stanu dla materiału.</p></div><div class="button-group"><label class="button button-primary button-small file-button" for="workspaceStockFileInput">Wczytaj zapasy</label><button id="workspaceClearStockButton" class="button button-ghost button-small" type="button">Usuń zapasy</button></div><input id="workspaceStockFileInput" class="visually-hidden" type="file" accept=".xlsx,.xls,.xlsb,.csv"></div>
+                    <div id="workspaceStockMapping" class="workspace-stock-mapping" hidden>
+                        <label><span>Materiał *</span><select id="workspaceStockMaterialField"></select></label>
+                        <label><span>Stan zapasu *</span><select id="workspaceStockValueField"></select></label>
+                        <label><span>Data snapshotu</span><select id="workspaceStockDateField"></select></label>
+                        <label><span>Jednostka</span><select id="workspaceStockUnitField"></select></label>
+                        <label><span>Lead time (dni)</span><select id="workspaceStockLeadTimeField"></select></label>
+                        <label><span>MOQ</span><select id="workspaceStockMoqField"></select></label>
+                        <label><span>Krotność zamówienia</span><select id="workspaceStockMultipleField"></select></label>
+                        <label><span>Safety stock</span><select id="workspaceStockSafetyField"></select></label>
+                        <label><span>Otwarte zamówienia</span><select id="workspaceStockOpenOrdersField"></select></label>
+                        <label><span>Dostawca</span><select id="workspaceStockSupplierField"></select></label>
+                        <button id="workspaceApplyStockMappingButton" class="button button-primary align-end" type="button">Zastosuj mapowanie</button>
+                    </div>
+                    <p id="workspaceStockStatus" class="analysis-tip">Nie wczytano osobnej tabeli zapasów.</p>
+                    <div class="table-scroll"><table><thead><tr><th>Materiał</th><th>Stan</th><th>Data</th><th>Jednostka</th><th>Lead time</th><th>MOQ</th><th>Krotność</th><th>Safety stock</th><th>Otwarte zamówienia</th><th>Dostawca</th><th>Źródło</th></tr></thead><tbody id="workspaceStockBody"></tbody></table></div>
+                </section>
+
+                <section class="workspace-view" data-workspace-view="workspace" hidden>
+                    <div class="panel-heading compact"><div><h3>Projekty lokalne i Workspace</h3><p>Automatyczny zapis używa IndexedDB w tej przeglądarce. JSON służy do przenoszenia projektu.</p></div></div>
+                    <div class="workspace-project-toolbar">
+                        <label><span>Nazwa projektu</span><input id="workspaceProjectName" type="text" value="Nowy projekt"></label>
+                        <button id="workspaceSaveProjectButton" class="button button-primary" type="button">Zapisz teraz</button>
+                        <button id="workspaceNewProjectButton" class="button button-secondary" type="button">Nowy projekt</button>
+                        <button id="workspaceExportJsonButton" class="button button-secondary" type="button">Eksport JSON</button>
+                        <label class="button button-ghost file-button" for="dataLabWorkspaceInput">Import JSON</label>
+                    </div>
+                    <p id="workspacePersistenceStatus" class="analysis-tip">Automatyczny zapis jest aktywny.</p>
+                    <div class="table-scroll"><table><thead><tr><th>Nazwa</th><th>Zmodyfikowano</th><th>Wiersze</th><th>Akcje</th></tr></thead><tbody id="workspaceProjectList"></tbody></table></div>
+                </section>
+            </div>
+        </section>
+
     </main>
 
     <footer class="app-footer">
         <span data-app-name>Pack Materials Analytics</span>
-        <span>Wersja <span data-app-version>1.0.13</span></span>
+        <span>Wersja <span data-app-version>1.4.1</span></span>
         <span>Dane są przetwarzane lokalnie w przeglądarce.</span>
     </footer>
 
@@ -475,8 +749,12 @@
                 "src/value-normalization-engine.js",
                 "src/normalization-engine.js",
                 "src/pivot-engine.js",
+                "src/decision-engine.js",
                 "src/chart-engine.js",
                 "src/export-engine.js",
+                "src/workspace-storage.js",
+                "src/formula-engine.js",
+                "src/spreadsheet-engine.js",
                 "app.js"
             ];
 

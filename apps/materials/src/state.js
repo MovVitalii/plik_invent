@@ -98,7 +98,10 @@
                 dataRows: [],
                 previewRows: [],
                 detectedTypes: {},
-                emptyRowCount: 0
+                emptyRowCount: 0,
+                sourceRowNumbers: [],
+                rowProvenance: [],
+                sheetProvenance: {}
             },
 
             mapping: {
@@ -132,6 +135,10 @@
                 filteredRows: [],
                 invalidRows: [],
                 duplicateRows: [],
+                stockRows: [],
+                stockFields: [],
+                calculatedColumns: [],
+                transformationSteps: [],
                 fields: [],
                 statistics: {
                     totalSourceRows: 0,
@@ -397,21 +404,11 @@
     }
 
     function resetFromImport() {
-        const file = store.import.file;
-        const fileMeta = { ...store.import.fileMeta };
-        const workbook = store.import.workbook;
-        const sheetNames = [...store.import.sheetNames];
-
         destroyChart();
         const next = createInitialState();
         next.preferences = { ...store.preferences };
         next.mappingProfiles = [...store.mappingProfiles];
-        next.normalizationRules = [...store.normalizationRules];
         next.recentFiles = [...store.recentFiles];
-        next.import.file = file;
-        next.import.fileMeta = fileMeta;
-        next.import.workbook = workbook;
-        next.import.sheetNames = sheetNames;
         next.application.status = STATUS.READY;
         store = next;
         notify(EVENTS.WORKSPACE_RESET, { scope: "from-import" });
@@ -428,6 +425,8 @@
         store.import.previewRows = [];
         store.import.detectedTypes = {};
         store.import.emptyRowCount = 0;
+        store.import.sourceRowNumbers = [];
+        store.import.rowProvenance = [];
         store.mapping = createInitialState().mapping;
         store.validation = createInitialState().validation;
         store.dataset = createInitialState().dataset;
@@ -454,9 +453,10 @@
         notify(EVENTS.FILE_SELECTED, { ...store.import.fileMeta });
     }
 
-    function setWorkbook(workbook, sheetNames = []) {
+    function setWorkbook(workbook, sheetNames = [], sheetProvenance = {}) {
         store.import.workbook = workbook;
         store.import.sheetNames = Array.isArray(sheetNames) ? [...sheetNames] : [];
+        store.import.sheetProvenance = sheetProvenance && typeof sheetProvenance === "object" ? { ...sheetProvenance } : {};
         notify(EVENTS.WORKBOOK_LOADED, { sheetNames: [...store.import.sheetNames] });
     }
 
@@ -481,6 +481,8 @@
             ? { ...analysis.detectedTypes }
             : {};
         store.import.emptyRowCount = Number(analysis.emptyRowCount) || 0;
+        store.import.sourceRowNumbers = Array.isArray(analysis.sourceRowNumbers) ? [...analysis.sourceRowNumbers] : [];
+        store.import.rowProvenance = Array.isArray(analysis.rowProvenance) ? analysis.rowProvenance.map((item) => ({ ...item })) : [];
         initializeMapping({});
         notify(EVENTS.SHEET_ANALYZED, {
             sheetName: store.import.selectedSheet,
@@ -647,6 +649,33 @@
             normalizedRows: store.dataset.normalizedRows.length,
             invalidRows: store.dataset.invalidRows.length,
             duplicateRows: store.dataset.duplicateRows.length
+        });
+    }
+
+
+    function setStockDataset(rows = [], fields = []) {
+        store.dataset.stockRows = Array.isArray(rows) ? rows : [];
+        store.dataset.stockFields = Array.isArray(fields) ? fields : [];
+        notify(EVENTS.DATA_NORMALIZED, {
+            normalizedRows: store.dataset.normalizedRows.length,
+            stockRows: store.dataset.stockRows.length,
+            stockUpdated: true
+        });
+    }
+
+    function setCalculatedColumns(columns = []) {
+        store.dataset.calculatedColumns = Array.isArray(columns) ? columns : [];
+        notify(EVENTS.DATA_NORMALIZED, {
+            normalizedRows: store.dataset.normalizedRows.length,
+            calculatedColumnsUpdated: true
+        });
+    }
+
+    function setTransformationSteps(steps = []) {
+        store.dataset.transformationSteps = Array.isArray(steps) ? steps : [];
+        notify(EVENTS.DATA_NORMALIZED, {
+            normalizedRows: store.dataset.normalizedRows.length,
+            transformationsUpdated: true
         });
     }
 
@@ -1206,6 +1235,9 @@
         clearValidationResult,
         clearProcessedData,
         setNormalizedDataset,
+        setStockDataset,
+        setCalculatedColumns,
+        setTransformationSteps,
         setFilteredDataset,
         setDateFilter,
         setFilter,

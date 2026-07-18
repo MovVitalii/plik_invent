@@ -41,6 +41,8 @@
         bind(elements.sheetSelector, "change", handleSheetChange);
         bind(elements.reanalyzeSheetButton, "click", handleReanalyze);
         bind(elements.continueToMappingButton, "click", handleContinue);
+        bind(document.getElementById("headerRowNumber"), "change", handleReanalyze);
+        bind(document.getElementById("combineSheetsButton"), "click", combineAllSheets);
         initialized = true;
         return api;
     }
@@ -60,9 +62,65 @@
     }
 
     async function handleFileInputChange(event) {
-        const file = event.target.files?.[0];
+        const files = [...(event.target.files || [])];
         event.target.value = "";
-        if (file) await importFile(file);
+        if (!files.length) return;
+        try {
+            if (files.length === 1) await importFile(files[0]);
+            else await importFiles(files);
+        } catch (error) {
+            handleError(error, files.length > 1 ? "Import wielu plików" : "Import pliku");
+        }
+    }
+
+    async function importFiles(files) {
+        const list = [...(files || [])].filter(Boolean);
+        if (!list.length) return null;
+        const token = ++importToken;
+        try {
+            assertSheetJs();
+            for (const file of list) {
+                const validation = validateExcelFile(file);
+                if (!validation.valid) throw new Error(`${file.name}: ${validation.errors.map((item) => item.message).join(" ")}`);
+            }
+            state.setSelectedFile(list[0]);
+            state.clearError();
+            state.setBusy({ title: UI_TEXT.loadingFile, message: `Odczytywanie ${list.length} plików...`, progress: 5 });
+            const combined = global.XLSX.utils.book_new();
+            const sheetProvenance = {};
+            let sheetCounter = 0;
+            for (let fileIndex = 0; fileIndex < list.length; fileIndex += 1) {
+                const file = list[fileIndex];
+                const buffer = await file.arrayBuffer();
+                ensureToken(token);
+                const workbook = global.XLSX.read(buffer, { type: "array", cellDates: true, raw: true, dense: false, WTF: false });
+                validateWorkbook(workbook);
+                workbook.SheetNames.forEach((sheetName) => {
+                    const base = `${file.name.replace(/\.[^.]+$/, "").slice(0, 20)}-${sheetName}`.slice(0, 28) || `Arkusz-${sheetCounter + 1}`;
+                    let unique = base;
+                    let suffix = 2;
+                    while (combined.SheetNames.includes(unique)) unique = `${base.slice(0, 25)}-${suffix++}`;
+                    global.XLSX.utils.book_append_sheet(combined, workbook.Sheets[sheetName], unique);
+                    sheetProvenance[unique] = { fileName: file.name, sheetName };
+                    sheetCounter += 1;
+                });
+                state.updateBusy({ message: `Wczytano ${fileIndex + 1} z ${list.length} plików.`, progress: 10 + Math.round((fileIndex + 1) / list.length * 45) });
+                await yieldToBrowser();
+            }
+            state.setWorkbook(combined, combined.SheetNames, sheetProvenance);
+            dom.setImportMode(true);
+            dom.updateWorkbookMetadata({ name: `${list.length} połączone pliki`, size: list.reduce((sum, file) => sum + file.size, 0), sheetCount: combined.SheetNames.length, rowCount: 0, columnCount: 0 });
+            dom.populateSheetSelector(combined.SheetNames, combined.SheetNames[0]);
+            document.getElementById("combineSheetsButton")?.removeAttribute("disabled");
+            await selectAndAnalyzeSheet(combined.SheetNames[0], { token });
+            state.clearBusy(STATUS.SUCCESS);
+            dom.showSuccess(`Wczytano ${list.length} plików i ${sheetCounter} arkuszy. Możesz wybrać arkusz albo użyć „Połącz arkusze”.`, "Import wielu plików");
+            return combined;
+        } catch (error) {
+            if (error?.code === "IMPORT_CANCELLED") return null;
+            handleError(error, "Import wielu plików");
+            return null;
+        }
     }
 
     async function importFile(file) {
@@ -95,7 +153,8 @@
             });
             ensureToken(token);
             validateWorkbook(workbook);
-            state.setWorkbook(workbook, workbook.SheetNames);
+            const sheetProvenance = Object.fromEntries(workbook.SheetNames.map((name) => [name, { fileName: file.name, sheetName: name }]));
+            state.setWorkbook(workbook, workbook.SheetNames, sheetProvenance);
 
             dom.setImportMode(true);
             dom.updateWorkbookMetadata({
@@ -107,6 +166,8 @@
             });
             dom.populateSheetSelector(workbook.SheetNames, workbook.SheetNames[0]);
             dom.setDisabled(elements.reanalyzeSheetButton, false);
+            const combineButton = document.getElementById("combineSheetsButton");
+            if (combineButton) combineButton.disabled = workbook.SheetNames.length < 2;
 
             state.updateBusy({ message: "Analizowanie pierwszego arkusza...", progress: 50 });
             await selectAndAnalyzeSheet(workbook.SheetNames[0], { token });
@@ -180,14 +241,29 @@
 
         state.updateBusy({ message: "Odczytywanie nazw kolumn z pierwszego wiersza...", progress: 68 });
         await yieldToBrowser();
-        const headerRowIndex = 0;
-        if (!rowHasValues(rawRows[headerRowIndex])) {
-            throw new Error("Pierwszy wiersz arkusza nie zawiera nazw kolumn.");
+        const configuredHeaderRow = Math.max(1, Number(document.getElementById("headerRowNumber")?.value || 1));
+        const headerRowIndex = configuredHeaderRow - 1;
+        if (headerRowIndex >= rawRows.length || !rowHasValues(rawRows[headerRowIndex])) {
+            throw new Error(`Wiersz nagłówków ${configuredHeaderRow} nie zawiera nazw kolumn.`);
         }
 
         const analysis = buildSheetAnalysis(rawRows, headerRowIndex);
         if (!analysis.headers.length) throw new Error("Nie wykryto kolumn danych.");
         if (!analysis.dataRows.length) throw new Error("Arkusz nie zawiera danych poniżej nagłówków.");
+        const provenanceMap = state.get("import.sheetProvenance", {}) || {};
+        const sheetOrigin = provenanceMap[sheetName] || {};
+        const rowProvenanceOverride = sheetOrigin.rows || null;
+        const rowProvenance = Array.isArray(rowProvenanceOverride) && rowProvenanceOverride.length === analysis.dataRows.length
+            ? rowProvenanceOverride.map((item, index) => ({
+                fileName: item?.fileName || sheetOrigin.fileName || state.get("import.fileMeta.name", ""),
+                sheetName: item?.sheetName || sheetOrigin.sheetName || sheetName,
+                sourceRow: Number(item?.sourceRow) || analysis.sourceRowNumbers[index]
+            }))
+            : analysis.sourceRowNumbers.map((sourceRow) => ({
+                fileName: sheetOrigin.fileName || state.get("import.fileMeta.name", ""),
+                sheetName: sheetOrigin.sheetName || sheetName,
+                sourceRow
+            }));
 
         state.updateBusy({ message: "Rozpoznawanie typów danych...", progress: 80 });
         await yieldToBrowser();
@@ -204,7 +280,9 @@
             dataRows: analysis.dataRows,
             previewRows,
             detectedTypes,
-            emptyRowCount: analysis.emptyRowCount
+            emptyRowCount: analysis.emptyRowCount,
+            sourceRowNumbers: analysis.sourceRowNumbers,
+            rowProvenance
         });
 
         renderAnalysis({
@@ -268,9 +346,6 @@
     function buildSheetAnalysis(rawRows, headerRowIndex) {
         const headerRow = rawRows[headerRowIndex] || [];
         let lastColumn = -1;
-        // Scan every row (not just a small head sample) to find the last populated column.
-        // A column that only starts being filled far down the sheet (e.g. a sparse "notes"
-        // field) must not be silently dropped along with its header.
         for (let rowIndex = headerRowIndex; rowIndex < rawRows.length; rowIndex += 1) {
             const row = rawRows[rowIndex];
             if (!row) continue;
@@ -282,20 +357,68 @@
             }
         }
         const columnCount = Math.min(lastColumn + 1, IMPORT_LIMITS.maximumColumns);
-        if (columnCount <= 0) return { headers: [], sourceHeaders: [], dataRows: [], emptyRowCount: 0 };
+        if (columnCount <= 0) return { headers: [], sourceHeaders: [], dataRows: [], sourceRowNumbers: [], emptyRowCount: 0 };
         const sourceHeaders = headerRow.slice(0, columnCount).map(cleanText);
         const headers = createUniqueHeaders(sourceHeaders);
-        const candidateRows = rawRows.slice(headerRowIndex + 1).map((row) => {
-            const normalized = Array.isArray(row) ? row.slice(0, columnCount) : [];
-            while (normalized.length < columnCount) normalized.push("");
-            return normalized;
-        });
-        return {
-            headers,
-            sourceHeaders,
-            dataRows: candidateRows.filter(rowHasValues),
-            emptyRowCount: countEmptyRows(candidateRows)
-        };
+        const dataRows = [];
+        const sourceRowNumbers = [];
+        let emptyRowCount = 0;
+        for (let rowIndex = headerRowIndex + 1; rowIndex < rawRows.length; rowIndex += 1) {
+            const row = Array.isArray(rawRows[rowIndex]) ? rawRows[rowIndex].slice(0, columnCount) : [];
+            while (row.length < columnCount) row.push("");
+            if (!rowHasValues(row)) {
+                emptyRowCount += 1;
+                continue;
+            }
+            dataRows.push(row);
+            sourceRowNumbers.push(rowIndex + 1);
+        }
+        return { headers, sourceHeaders, dataRows, sourceRowNumbers, emptyRowCount };
+    }
+
+
+    async function combineAllSheets() {
+        const workbook = state.get("import.workbook");
+        if (!workbook?.SheetNames?.length) throw new Error("Brak arkuszy do połączenia.");
+        const headerRowIndex = Math.max(0, Number(document.getElementById("headerRowNumber")?.value || 1) - 1);
+        let canonicalHeaders = null;
+        const combinedRows = [];
+        const combinedProvenance = [];
+        const sourceNames = [];
+        const sheetProvenance = state.get("import.sheetProvenance", {}) || {};
+        for (const sheetName of workbook.SheetNames.filter((name) => name !== "Połączone dane")) {
+            const worksheet = workbook.Sheets[sheetName];
+            const range = inspectWorksheetRange(worksheet);
+            if (!range.rowCount) continue;
+            validateRange(range, sheetName);
+            const rawRows = worksheetToRows(worksheet, range);
+            const analysis = buildSheetAnalysis(rawRows, headerRowIndex);
+            if (!analysis.headers.length || !analysis.dataRows.length) continue;
+            if (!canonicalHeaders) canonicalHeaders = analysis.headers;
+            if (canonicalHeaders.length !== analysis.headers.length || canonicalHeaders.some((header, index) => header !== analysis.headers[index])) {
+                throw new Error(`Arkusz „${sheetName}” ma inną strukturę kolumn. Ujednolić nagłówki przed łączeniem.`);
+            }
+            const origin = sheetProvenance[sheetName] || { fileName: state.get("import.fileMeta.name", ""), sheetName };
+            combinedRows.push(...analysis.dataRows);
+            analysis.sourceRowNumbers.forEach((sourceRow) => combinedProvenance.push({
+                fileName: origin.fileName || state.get("import.fileMeta.name", ""),
+                sheetName: origin.sheetName || sheetName,
+                sourceRow
+            }));
+            sourceNames.push(sheetName);
+        }
+        if (!canonicalHeaders || !combinedRows.length) throw new Error("Nie znaleziono zgodnych arkuszy z danymi.");
+        const aoa = [];
+        for (let index = 0; index < headerRowIndex; index += 1) aoa.push([]);
+        aoa.push(canonicalHeaders, ...combinedRows);
+        workbook.Sheets["Połączone dane"] = global.XLSX.utils.aoa_to_sheet(aoa);
+        if (!workbook.SheetNames.includes("Połączone dane")) workbook.SheetNames.push("Połączone dane");
+        const nextProvenance = { ...sheetProvenance, "Połączone dane": { fileName: "Wiele źródeł", sheetName: "Połączone dane", rows: combinedProvenance } };
+        state.setWorkbook(workbook, workbook.SheetNames, nextProvenance);
+        dom.populateSheetSelector(workbook.SheetNames, "Połączone dane");
+        await selectAndAnalyzeSheet("Połączone dane");
+        state.clearBusy(STATUS.SUCCESS);
+        dom.showSuccess(`Połączono ${sourceNames.length} arkuszy: ${formatInteger(combinedRows.length)} wierszy. Zachowano źródłowy plik, arkusz i numer wiersza.`, "Łączenie arkuszy");
     }
 
 
@@ -373,6 +496,8 @@
         initialize,
         destroy,
         importFile,
+        importFiles,
+        combineAllSheets,
         analyzeSelectedSheet,
         analyzeSheet,
         selectAndAnalyzeSheet,

@@ -109,8 +109,8 @@
             columnFields: source.columnFields || [],
             valueFields: source.valueFields || [],
             hasNumericData: values.length > 0,
-            minimum: values.length ? Math.min(...values) : null,
-            maximum: values.length ? Math.max(...values) : null,
+            minimum: values.length ? values.reduce((minimum, value) => Math.min(minimum, value), Infinity) : null,
+            maximum: values.length ? values.reduce((maximum, value) => Math.max(maximum, value), -Infinity) : null,
             total: ["sum", "count"].includes(source.result?.aggregation || "sum")
                 ? values.reduce((sum, value) => sum + value, 0)
                 : null

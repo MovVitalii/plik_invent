@@ -94,8 +94,9 @@
         const errorsByCode = {};
         const warningsByCode = {};
         const importedAt = new Date().toISOString();
-        const sourceFile = state.get("import.fileMeta.name", "");
-        const sourceSheet = state.get("import.selectedSheet", "");
+        const defaultSourceFile = state.get("import.fileMeta.name", "");
+        const defaultSourceSheet = state.get("import.selectedSheet", "");
+        const rowProvenance = state.get("import.rowProvenance", []);
         let warningRows = 0;
         let totalQuantity = 0;
         let minimumQuantity = null;
@@ -117,7 +118,10 @@
                 for (let index = start; index < end; index += 1) {
                     const mapped = mapSourceRow(rows[index], indexes);
                     const validation = validateRawRecord(mapped);
-                    const sourceRowNumber = getSourceRowNumber(index);
+                    const provenance = rowProvenance[index] || {};
+                    const sourceRowNumber = Number(provenance.sourceRow) || getSourceRowNumber(index);
+                    const sourceFile = provenance.fileName || defaultSourceFile;
+                    const sourceSheet = provenance.sheetName || defaultSourceSheet;
                     const sourceValues = Object.fromEntries(headers.map((header, columnIndex) => [header, rows[index][columnIndex]]));
 
                     if (validation.warnings.length) {
@@ -147,7 +151,9 @@
                         importedAt,
                         canonicalMaps,
                         valueResolver,
-                        warnings: validation.warnings
+                        warnings: validation.warnings,
+                        sourceValues,
+                        headers
                     });
                     const duplicateKey = createDuplicateKey(record, rows[index]);
                     record.duplicateKey = duplicateKey;
@@ -205,7 +211,7 @@
 
             state.updateBusy({ message: "Tworzenie struktury analitycznej...", progress: 92 });
             await yieldToBrowser();
-            const fields = buildDatasetFields(mapping);
+            const fields = buildDatasetFields(mapping, headers);
             state.setNormalizedDataset({
                 normalizedRows,
                 invalidRows,
@@ -301,7 +307,9 @@
             importedAt,
             canonicalMaps,
             valueResolver,
-            warnings
+            warnings,
+            sourceValues = {},
+            headers = []
         } = options;
         const dateFields = deriveDateFields(parseDate(mappedRecord.date, { allowExcelSerial: true, allowNumericStringExcelSerial: true }));
         const record = {
@@ -325,6 +333,10 @@
                 record.quantity = parseNumber(mappedRecord.quantity);
                 return;
             }
+            if (field.id === "stockLevel") {
+                record.stockLevel = parseNumber(mappedRecord.stockLevel);
+                return;
+            }
             const original = cleanText(mappedRecord[field.id]);
             const normalized = normalizeFieldValue(field.id, mappedRecord[field.id], canonicalMaps, valueResolver);
             record[field.id] = normalized;
@@ -335,6 +347,10 @@
         Object.assign(record, dateFields);
         record.date = dateFields.date;
         record.quantity = parseNumber(mappedRecord.quantity);
+        const sourceHeaderList = Array.isArray(headers) && headers.length ? headers : Object.keys(sourceValues || {});
+        sourceHeaderList.forEach((header, index) => {
+            record[sourceFieldId(index)] = sourceValues?.[header] ?? null;
+        });
         return record;
     }
 
@@ -423,7 +439,12 @@
         return messages;
     }
 
-    function buildDatasetFields(mapping) {
+    function sourceFieldId(index) {
+        return `source__${index}`;
+    }
+
+    function buildDatasetFields(mapping, headers = state.get("import.headers", [])) {
+        const detectedTypes = state.get("import.detectedTypes", {});
         const mapped = SYSTEM_FIELDS
             .filter((field) => Boolean(mapping[field.id]))
             .map((field) => ({
@@ -439,6 +460,20 @@
                 aggregatable: field.type === DATA_TYPES.NUMBER,
                 hidden: false
             }));
+        const sourceFields = (Array.isArray(headers) ? headers : []).map((header, index) => ({
+            id: sourceFieldId(index),
+            label: header,
+            description: `Oryginalna kolumna źródłowa „${header}”.`,
+            type: detectedTypes[header] || DATA_TYPES.TEXT,
+            source: "source",
+            sourceColumn: header,
+            sourceIndex: index,
+            mappedTo: Object.entries(mapping || {}).filter(([, source]) => source === header).map(([fieldId]) => fieldId),
+            filterable: true,
+            groupable: true,
+            aggregatable: (detectedTypes[header] || DATA_TYPES.TEXT) === DATA_TYPES.NUMBER,
+            hidden: false
+        }));
         const derived = DERIVED_FIELDS.map((field) => ({
             ...field,
             description: field.description || "Pole utworzone automatycznie z daty.",
@@ -460,7 +495,7 @@
             aggregatable: false,
             hidden: true
         }));
-        return [...mapped, ...derived, ...internal];
+        return [...sourceFields, ...mapped, ...derived, ...internal];
     }
 
     function prepareAnalysisInterface(payload) {
@@ -493,7 +528,11 @@
     }
 
     function getSourceRowNumber(index) {
-        return (state.get("import.headerRowIndex", 0) || 0) + index + 2;
+        const sourceRows = state.get("import.sourceRowNumbers", []);
+        const exact = Number(sourceRows[index]);
+        return Number.isInteger(exact) && exact > 0
+            ? exact
+            : (state.get("import.headerRowIndex", 0) || 0) + index + 2;
     }
 
     function ensureToken(token) {
@@ -523,7 +562,9 @@
             importedAt: options.importedAt || new Date().toISOString(),
             canonicalMaps: options.canonicalMaps || createCanonicalMaps(),
             valueResolver: options.valueResolver || null,
-            warnings: validation.warnings
+            warnings: validation.warnings,
+            sourceValues: options.sourceValues || {},
+            headers: options.headers || Object.keys(options.sourceValues || {})
         });
         record.duplicateKey = createDuplicateKey(record, options.sourceRow || []);
         return { valid: true, errors: [], warnings: validation.warnings, record };

@@ -9,7 +9,8 @@
     const PMA = global.PMA || (global.PMA = {});
     const REQUIRED_MODULES = [
         "constants", "state", "utils", "dom", "importEngine", "mappingEngine",
-        "valueNormalizationEngine", "normalizationEngine", "pivotEngine", "chartEngine", "exportEngine"
+        "valueNormalizationEngine", "normalizationEngine", "pivotEngine", "decisionEngine", "chartEngine", "exportEngine",
+        "spreadsheetEngine"
     ];
 
     const lifecycle = {
@@ -64,7 +65,9 @@
             PMA.normalizationEngine,
             PMA.chartEngine,
             PMA.pivotEngine,
-            PMA.exportEngine
+            PMA.decisionEngine,
+            PMA.exportEngine,
+            PMA.spreadsheetEngine
         ].forEach((module) => {
             module.initialize();
             runtimeModules.push(module);
@@ -126,8 +129,20 @@
         bind(global, "error", handleGlobalError);
         bind(global, "unhandledrejection", handleUnhandledRejection);
         bind(global, "pagehide", handlePageHide);
-        bind(document, PMA.constants.EVENTS.DATA_NORMALIZED, () => PMA.exportEngine.refreshAvailability());
+        bind(document, PMA.constants.EVENTS.DATA_NORMALIZED, () => {
+            PMA.exportEngine.refreshAvailability();
+            const mappedFields = new Set(PMA.state.get("dataset.fields", []).filter((field) => field?.source === "mapped").map((field) => field.id));
+            const mappingValues = PMA.state.get("mapping.values", {});
+            const decisionReady = ["date", "material", "quantity"].every((fieldId) => mappedFields.has(fieldId) || Boolean(mappingValues[fieldId]));
+            if (decisionReady) {
+                PMA.dom.unlockSection("decision");
+                PMA.decisionEngine.refresh();
+            } else {
+                PMA.dom.lockSection("decision", "Mapuj pola Data, Materiał i Zużycie, aby uruchomić analizę decyzyjną.");
+            }
+        });
         bind(document, PMA.constants.EVENTS.PIVOT_BUILT, () => PMA.exportEngine.refreshAvailability());
+        bind(document, PMA.constants.EVENTS.FILTERS_CHANGED, () => PMA.decisionEngine.refresh());
     }
 
     function bind(target, eventName, handler, options = false) {
@@ -151,10 +166,11 @@
             PMA.state.resetWorkspace({
                 preservePreferences: true,
                 preserveMappingProfiles: true,
-                preserveNormalizationRules: true,
+                preserveNormalizationRules: false,
                 preserveRecentFiles: true
             });
             PMA.dom.resetUI();
+            PMA.decisionEngine.refresh();
             PMA.exportEngine.refreshAvailability();
             PMA.dom.showInfo("Obszar roboczy został wyczyszczony.", "Nowa analiza");
             PMA.dom.focus(PMA.dom.elements.excelFileInput);
@@ -208,8 +224,8 @@
         clearDragState();
         const files = [...(event.dataTransfer?.files || [])];
         if (!files.length) return;
-        if (files.length > 1) PMA.dom.showWarning("Można wczytać tylko jeden plik jednocześnie. Użyto pierwszego pliku.", "Import pliku");
-        await PMA.importEngine.importFile(files[0]);
+        if (files.length > 1) await PMA.importEngine.importFiles(files);
+        else await PMA.importEngine.importFile(files[0]);
     }
 
     function setDragState(active) {

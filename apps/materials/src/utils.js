@@ -100,11 +100,18 @@
 
     function round(value, digits = 2) {
         const number = Number(value);
-        if (!Number.isFinite(number)) {
-            return null;
-        }
-        const factor = 10 ** Math.max(0, Math.trunc(digits));
-        return Math.round((number + Number.EPSILON) * factor) / factor;
+        if (!Number.isFinite(number)) return null;
+        const places = Math.max(-15, Math.min(15, Math.trunc(Number(digits) || 0)));
+        const sign = Math.sign(number) || 1;
+        const shiftExponent = (input, exponentDelta) => {
+            const [coefficient, exponent = "0"] = String(input).split(/[eE]/);
+            return Number(`${coefficient}e${Number(exponent) + exponentDelta}`);
+        };
+        const shifted = shiftExponent(Math.abs(number), places);
+        if (!Number.isFinite(shifted)) return number;
+        const roundedInteger = Math.round(shifted);
+        const result = sign * shiftExponent(roundedInteger, -places);
+        return Object.is(result, -0) ? 0 : result;
     }
 
     function clonePlain(value) {
@@ -259,12 +266,12 @@
 
     function minimum(values) {
         const numeric = values.map(parseNumber).filter((value) => value !== null);
-        return numeric.length ? Math.min(...numeric) : null;
+        return numeric.length ? numeric.reduce((minimum, value) => Math.min(minimum, value), Infinity) : null;
     }
 
     function maximum(values) {
         const numeric = values.map(parseNumber).filter((value) => value !== null);
-        return numeric.length ? Math.max(...numeric) : null;
+        return numeric.length ? numeric.reduce((maximum, value) => Math.max(maximum, value), -Infinity) : null;
     }
 
     function isValidDate(value) {
@@ -907,7 +914,7 @@
 
     function isSupportedExcelFile(file) {
         const extension = getFileExtension(file?.name || file);
-        return ["xlsx", "xls", "xlsb"].includes(extension);
+        return ["xlsx", "xls", "xlsb", "csv"].includes(extension);
     }
 
     function validateExcelFile(file) {
@@ -916,7 +923,7 @@
             errors.push({ code: "not_file", message: "Nie wybrano prawidłowego pliku." });
         } else {
             if (!isSupportedExcelFile(file)) {
-                errors.push({ code: "unsupported_extension", message: "Obsługiwane formaty to XLSX, XLS i XLSB." });
+                errors.push({ code: "unsupported_extension", message: "Obsługiwane formaty to XLSX, XLS, XLSB i CSV." });
             }
             if (file.size <= 0) {
                 errors.push({ code: "empty_file", message: "Wybrany plik jest pusty." });
@@ -1084,7 +1091,7 @@
             if (quantity === 0) (NORMALIZATION.quantityAllowsZero ? warnings : errors).push(VALIDATION_CODES.ZERO_QUANTITY);
         }
 
-        if (!cleanText(record.brand)) errors.push(VALIDATION_CODES.MISSING_BRAND);
+        if (SYSTEM_FIELD_MAP?.brand?.required && !cleanText(record.brand)) errors.push(VALIDATION_CODES.MISSING_BRAND);
 
         // "line" (pack station) is only enforced when marked required in constants.js —
         // some source files (e.g. procurement exports) have no such concept.

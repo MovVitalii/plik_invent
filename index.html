@@ -1,74 +1,16 @@
 <!doctype html>
-<html lang="pl" class="no-js">
+<html lang="pl">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Excel Materials Analytics: analityka materiałów i uniwersalny trener Excel w jednej aplikacji.">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Materials Analytics: lokalny, Excel-podobny workspace do importu, edycji, transformacji, Pivot, analizy zużycia i planowania zapasów.">
   <meta name="color-scheme" content="light">
-  <title>Excel Materials Analytics</title>
-  <link rel="stylesheet" href="shell.css">
+  <title>Materials Analytics</title>
+  <script>
+    window.location.replace(new URL("apps/materials/index.html", window.location.href).href);
+  </script>
 </head>
 <body>
-  <a class="skip-link" href="#workspace">Przejdź do aplikacji</a>
-  <header class="app-header">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true">EMA</span>
-      <div>
-        <p class="eyebrow">Pack Online · analityka lokalna</p>
-        <h1>Excel Materials Analytics</h1>
-      </div>
-    </div>
-    <div class="header-actions">
-      <span class="privacy-badge">Dane pozostają w przeglądarce</span>
-      <button id="reloadModule" class="button button-secondary" type="button">Odśwież moduł</button>
-      <button id="openModule" class="button button-primary" type="button">Otwórz osobno</button>
-    </div>
-  </header>
-
-  <div class="app-shell">
-    <aside class="workflow-sidebar" aria-label="Moduły aplikacji">
-      <p class="sidebar-title">Obszar roboczy</p>
-      <nav class="workflow-nav">
-        <button class="workflow-step is-active" type="button" data-module="materials" data-src="apps/materials/index.html">
-          <span>1</span><span><strong>Materials Analytics</strong><small>Pełna logika Inventory 2.0</small></span>
-        </button>
-        <button class="workflow-step" type="button" data-module="trainer" data-src="apps/trainer/index.html">
-          <span>2</span><span><strong>Excel Data Lab</strong><small>Jakość, czyszczenie, formuły i raporty</small></span>
-        </button>
-        <button class="workflow-step" type="button" data-module="intelligence" data-src="apps/intelligence/index.html">
-          <span>3</span><span><strong>Material Intelligence</strong><small>Coverage, ABC, Pareto i forecast</small></span>
-        </button>
-      </nav>
-
-      <section class="info-panel">
-        <strong id="moduleTitle">Materials Analytics</strong>
-        <p id="moduleDescription">Import, mapowanie, normalizacja wartości, walidacja, analiza sezonowa, Pivot, wykresy i eksport.</p>
-      </section>
-
-      <section class="feature-panel">
-        <p class="sidebar-title">Zintegrowane funkcje</p>
-        <ul>
-          <li>mapowanie kolumn systemowych;</li>
-          <li>normalizacja nazw i wartości;</li>
-          <li>kontrola jakości i duplikatów;</li>
-          <li>czyszczenie danych;</li>
-          <li>SUMIFS / COUNTIFS / AVERAGEIFS;</li>
-          <li>Pivot, wykresy i Excel report.</li>
-        </ul>
-      </section>
-    </aside>
-
-    <main id="workspace" class="workspace">
-      <div class="workspace-bar">
-        <div>
-          <span class="status-dot" aria-hidden="true"></span>
-          <strong id="workspaceLabel">Materials Analytics</strong>
-        </div>
-        <span id="workspaceHint">Tryb biznesowy</span>
-      </div>
-      <iframe id="moduleFrame" title="Materials Analytics" src="apps/materials/index.html" loading="eager"></iframe>
-    </main>
-  </div>
-  <script src="shell.js"></script>
+  <p><a href="apps/materials/index.html">Otwórz Materials Analytics</a></p>
 </body>
 </html>

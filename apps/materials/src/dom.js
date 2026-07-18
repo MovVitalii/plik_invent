@@ -27,17 +27,13 @@
         "excelFileInput", "exportButton", "exportMenu", "exportXlsxButton",
         "exportCsvButton", "exportCleanDataButton", "exportErrorsButton",
         "resetWorkspaceButton", "importProgressText", "mappingProgressText",
-        "analysisProgressText", "importSection", "importStatusBadge", "importEmptyState",
+        "analysisProgressText", "dataLabProgressText", "importSection", "importStatusBadge", "importEmptyState",
         "importContent", "workbookFileName", "workbookFileSize", "workbookSheetCount",
         "workbookRowCount", "workbookColumnCount", "sheetSelector",
         "reanalyzeSheetButton", "previewDescription", "previewRowCount",
         "previewTable", "previewTableHead", "previewTableBody", "continueToMappingButton",
         "mappingSection", "mappingStatusBadge", "mappingLockedState", "mappingContent",
         "autoMapButton", "sourceColumnsCount", "sourceColumnsList", "mappingFieldsContainer",
-        "normalizationStatusBadge", "normalizationFieldSelector", "refreshNormalizationButton",
-        "saveNormalizationRulesButton", "clearNormalizationRulesButton", "normalizationSourceVariants",
-        "normalizationTargetValues", "normalizationActiveRules", "normalizationAffectedRows",
-        "normalizationNotice", "normalizationTable", "normalizationTableBody", "normalizationTargetSuggestions",
         "validateMappingButton", "validationTotalRows", "validationValidRows",
         "validationInvalidRows", "validationDuplicateRows", "validationMessages",
         "backToImportButton", "processDataButton", "analysisSection", "analysisStatusBadge",
@@ -49,7 +45,13 @@
         "tableResultView", "chartResultView", "chartTypeControls", "pivotResultTable",
         "pivotResultHead", "pivotResultBody", "pivotResultFoot", "analysisChart",
         "chartDescription", "loadingOverlay", "loadingTitle", "loadingMessage",
-        "loadingProgress", "toastContainer"
+        "loadingProgress", "toastContainer",
+        "decisionSection", "decisionStatusBadge", "decisionLockedState", "decisionContent",
+        "decisionProgressText", "decisionStockNotice", "kpiUsed", "kpiStock", "kpiMaterials",
+        "kpiRisk", "decisionSummary", "coverageTableBody", "decisionParetoSummary", "paretoChart",
+        "abcTableBody", "forecastSeasonSelect", "forecastDaysInput", "forecastBufferInput",
+        "forecastTableBody", "exportForecastCsvButton", "printDecisionReportButton",
+        "dataLabSection", "dataLabStatusBadge", "dataLabLockedState", "dataLabContent"
     ];
 
     const elements = {};
@@ -67,6 +69,8 @@
     elements.resultViewButtons = [...document.querySelectorAll("[data-result-view]")];
     elements.chartTypeButtons = [...document.querySelectorAll("[data-chart-type]")];
     elements.helpButtons = [...document.querySelectorAll(".help-button[data-help]")];
+    elements.decisionTabButtons = [...document.querySelectorAll("[data-decision-tab]")];
+    elements.decisionViews = [...document.querySelectorAll("[data-decision-view]")];
     Object.freeze(elements);
 
     let initialized = false;
@@ -262,7 +266,7 @@
     }
 
     function setWorkflowStage(stage) {
-        const activeStage = Math.max(1, Math.min(3, Number(stage) || 1));
+        const activeStage = Math.max(1, Math.min(5, Number(stage) || 1));
         elements.workflowSteps.forEach((step, index) => {
             const stepNumber = index + 1;
             step.classList.toggle("is-active", stepNumber === activeStage);
@@ -276,7 +280,9 @@
         const map = {
             import: elements.importProgressText,
             mapping: elements.mappingProgressText,
-            analysis: elements.analysisProgressText
+            analysis: elements.analysisProgressText,
+            decision: elements.decisionProgressText,
+            dataLab: elements.dataLabProgressText
         };
         if (!map[stage]) throw new Error(`Unknown workflow stage: ${stage}`);
         map[stage].textContent = String(text ?? "");
@@ -288,6 +294,12 @@
         }
         if (sectionName === "analysis") {
             return { section: elements.analysisSection, lockedState: elements.analysisLockedState, content: elements.analysisContent };
+        }
+        if (sectionName === "decision") {
+            return { section: elements.decisionSection, lockedState: elements.decisionLockedState, content: elements.decisionContent };
+        }
+        if (sectionName === "dataLab") {
+            return { section: elements.dataLabSection, lockedState: elements.dataLabLockedState, content: elements.dataLabContent };
         }
         throw new Error(`Unsupported section: ${sectionName}`);
     }
@@ -315,7 +327,9 @@
         const map = {
             import: [elements.importSection, 1],
             mapping: [elements.mappingSection, 2],
-            analysis: [elements.analysisSection, 3]
+            analysis: [elements.analysisSection, 3],
+            decision: [elements.decisionSection, 4],
+            dataLab: [elements.dataLabSection, 5]
         };
         const entry = map[sectionName];
         if (!entry) throw new Error(`Unknown section: ${sectionName}`);
@@ -646,11 +660,14 @@
     }
 
     function bindWorkflowNavigation() {
-        elements.workflowSteps.forEach((step) => {
+        elements.workflowSteps.forEach((step, index) => {
             step.addEventListener("click", () => {
                 if (step.disabled) return;
                 const section = document.getElementById(step.dataset.targetSection);
-                if (section) scrollToElement(section);
+                if (!section) return;
+                setWorkflowStage(index + 1);
+                PMA.state.setActiveSection(section.id);
+                scrollToElement(section);
             });
         });
     }
@@ -745,18 +762,6 @@
         clear(elements.sourceColumnsList);
         clear(elements.mappingFieldsContainer);
         setText(elements.sourceColumnsCount, "0");
-        populateSelect(elements.normalizationFieldSelector, []);
-        clear(elements.normalizationTableBody);
-        clear(elements.normalizationTargetSuggestions);
-        setText(elements.normalizationSourceVariants, "0");
-        setText(elements.normalizationTargetValues, "0");
-        setText(elements.normalizationActiveRules, "0");
-        setText(elements.normalizationAffectedRows, "0");
-        setText(elements.normalizationNotice, "Najpierw zakończ mapowanie kolumn. Techniczne różnice w wielkości liter i odstępach są łączone automatycznie.");
-        setStatusBadge(elements.normalizationStatusBadge, "Wybierz pole", "neutral");
-        setDisabled(elements.refreshNormalizationButton, true);
-        setDisabled(elements.saveNormalizationRulesButton, true);
-        setDisabled(elements.clearNormalizationRulesButton, true);
         updateValidationSummary({});
         clear(elements.validationMessages);
         setDisabled(elements.autoMapButton, true);
@@ -782,6 +787,24 @@
         clearPivotTable();
         setText(elements.chartDescription, "");
         setExportAvailability({ analysis: false, cleanData: false, errors: false });
+        lockSection("decision", "Przetwórz dane, aby zobaczyć analizę decyzyjną.");
+        setStatusBadge(elements.decisionStatusBadge, "Niedostępne", "neutral");
+        setWorkflowProgress("decision", "Niedostępne");
+        elements.decisionStockNotice.hidden = true;
+        clear(elements.coverageTableBody);
+        clear(elements.abcTableBody);
+        clear(elements.forecastTableBody);
+        clear(elements.decisionSummary);
+        setText(elements.kpiUsed, "0");
+        setText(elements.kpiStock, "—");
+        setText(elements.kpiMaterials, "0");
+        setText(elements.kpiRisk, "—");
+        setText(elements.decisionParetoSummary, "");
+        setDisabled(elements.exportForecastCsvButton, true);
+        setDisabled(elements.printDecisionReportButton, true);
+        lockSection("dataLab", "Przetwórz dane lub zaimportuj workspace, aby uruchomić Edytor danych.");
+        setStatusBadge(elements.dataLabStatusBadge, "Niedostępne", "neutral");
+        setWorkflowProgress("dataLab", "Niedostępne");
         setWorkflowStage(1);
         closeExportMenu();
         closeHelpPopover();

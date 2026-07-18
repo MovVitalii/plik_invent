@@ -34,17 +34,24 @@
         },
         {
             id: "quantity",
-            label: "Ilość",
-            description: "Zużyta lub zarejestrowana ilość materiału.",
+            label: "Zużycie / ilość wykorzystana",
+            description: "Ilość materiału zużyta w danym wierszu lub okresie. To pole jest podstawą analizy wykorzystania.",
             type: DATA_TYPES.NUMBER,
             required: true
+        },
+        {
+            id: "stockLevel",
+            label: "Aktualny stan zapasu",
+            description: "Opcjonalna ilość materiału pozostająca obecnie w magazynie. Nie jest wyliczana z samego zużycia; do wyliczenia potrzebne byłyby także stan początkowy i przyjęcia.",
+            type: DATA_TYPES.NUMBER,
+            required: false
         },
         {
             id: "brand",
             label: "Marka",
             description: "Marka lub brand przypisany do operacji.",
             type: DATA_TYPES.TEXT,
-            required: true
+            required: false
         },
         {
             id: "line",
@@ -145,6 +152,11 @@
         quantity: Object.freeze([
             "ilość", "ilosc", "quantity", "qty", "used", "usage",
             "zużycie", "zuzycie", "consumption", "amount", "value"
+        ]),
+        stockLevel: Object.freeze([
+            "stan zapasu", "stan magazynowy", "zapas", "stan końcowy", "stan koncowy",
+            "stock", "stock level", "ending stock", "on hand", "quantity on hand",
+            "saldo", "balance", "inventory", "stan"
         ]),
         brand: Object.freeze([
             "marka", "brand", "brand name", "client brand", "client"
@@ -421,18 +433,21 @@
         FILTERS_CHANGED: "pma:filters-changed",
         ANALYSIS_CHANGED: "pma:analysis-changed",
         PIVOT_BUILT: "pma:pivot-built",
+        DECISION_BUILT: "pma:decision-built",
         CHART_RENDERED: "pma:chart-rendered",
         EXPORT_STARTED: "pma:export-started",
         EXPORT_COMPLETED: "pma:export-completed",
         EXPORT_FAILED: "pma:export-failed",
-        NORMALIZATION_RULES_CHANGED: "pma:normalization-rules-changed"
+        NORMALIZATION_RULES_CHANGED: "pma:normalization-rules-changed",
+        DATA_CLEANED: "pma:data-cleaned",
+        WORKSPACE_IMPORTED: "pma:workspace-imported"
     });
 
     const constants = {
         APP: Object.freeze({
             name: "Pack Materials Analytics",
             shortName: "PMA",
-            version: "1.0.13",
+            version: "1.4.1",
             storageSchemaVersion: 3,
             locale: "pl-PL",
             company: "",
@@ -538,6 +553,21 @@
             csvIncludeBom: true
         }),
 
+        DECISION: Object.freeze({
+            minimumObservedDays: 3,
+            lowDensityThreshold: 0.1,
+            mediumDensityThreshold: 0.3,
+            mediumObservedDaysThreshold: 7,
+            riskCoverageDays: 7,
+            abcThresholdA: 80,
+            abcThresholdB: 95,
+            paretoThreshold: 80,
+            forecastDefaultDays: 90,
+            forecastDefaultBuffer: 0.15,
+            forecastMaxDays: 365,
+            forecastMaxBuffer: 1
+        }),
+
         SORT_ORDERS: Object.freeze({ ASC: "asc", DESC: "desc" }),
         RESULT_VIEWS,
         STATUS,
@@ -560,11 +590,19 @@
             }),
             mapping: Object.freeze({
                 title: "Mapowanie kolumn",
-                message: "Przypisz kolumny źródłowe do pól systemowych. Pola oznaczone gwiazdką są wymagane."
+                message: "Przypisz kolumny źródłowe do pól systemowych. „Zużycie / ilość wykorzystana” jest wymagane. „Aktualny stan zapasu” jest opcjonalnym, osobnym polem i nie może zostać wyliczony wyłącznie na podstawie zużycia."
             }),
             analysis: Object.freeze({
                 title: "Analiza",
                 message: "Przeciągaj pola do Wierszy, Kolumn i Wartości, aby utworzyć tabelę przestawną oraz wykres."
+            }),
+            decision: Object.freeze({
+                title: "Analiza decyzyjna",
+                message: "Pareto i ABC korzystają ze zużycia. Pokrycie, ryzyko i szacowane zapotrzebowanie używają priorytetowo osobnej tabeli zapasów z Edytora danych, a w drugiej kolejności pola „Aktualny stan zapasu”."
+            }),
+            dataLab: Object.freeze({
+                title: "Edytor danych",
+                message: "Arkusz zachowuje wszystkie kolumny źródłowe. Możesz edytować komórki, kopiować i wklejać zakresy, filtrować, sortować, wykonywać transformacje, tworzyć kolumny obliczeniowe, poprawiać błędne wiersze i zapisywać projekty lokalnie."
             })
         })
     };

@@ -1,0 +1,83 @@
+"use strict";
+
+const fs = require("fs");
+const path = require("path");
+const vm = require("vm");
+
+const ROOT = path.resolve(__dirname, "..");
+const APP = path.join(ROOT, "apps", "materials");
+const checks = [];
+function check(label, condition, detail = "") {
+    const pass = Boolean(condition);
+    checks.push(pass);
+    console.log(`${pass ? "PASS" : "FAIL"} — ${label}${detail ? ` (${detail})` : ""}`);
+}
+function walk(directory, predicate = () => true) {
+    const output = [];
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+        if (["node_modules", ".git"].includes(entry.name)) continue;
+        const full = path.join(directory, entry.name);
+        if (entry.isDirectory()) output.push(...walk(full, predicate));
+        else if (predicate(full)) output.push(full);
+    }
+    return output;
+}
+
+const jsFiles = walk(APP, (file) => file.endsWith(".js") && !file.includes(`${path.sep}vendor${path.sep}`));
+const syntaxErrors = [];
+for (const file of jsFiles) {
+    try { new vm.Script(fs.readFileSync(file, "utf8"), { filename: file }); }
+    catch (error) { syntaxErrors.push(`${path.relative(ROOT, file)}: ${error.message}`); }
+}
+check("All application JavaScript files parse", syntaxErrors.length === 0, syntaxErrors.join(" | "));
+
+const htmlFiles = [path.join(ROOT, "index.html"), path.join(APP, "index.html")];
+const duplicateIds = [];
+for (const file of htmlFiles) {
+    const html = fs.readFileSync(file, "utf8");
+    const ids = [...html.matchAll(/\bid=["']([^"']+)["']/g)].map((match) => match[1]);
+    const seen = new Set();
+    ids.forEach((id) => { if (seen.has(id)) duplicateIds.push(`${path.relative(ROOT, file)}#${id}`); else seen.add(id); });
+}
+check("HTML contains no duplicate IDs", duplicateIds.length === 0, duplicateIds.join(", "));
+
+const missingAssets = [];
+for (const file of htmlFiles) {
+    const html = fs.readFileSync(file, "utf8");
+    for (const match of html.matchAll(/\b(?:src|href)=["']([^"']+)["']/g)) {
+        const reference = match[1].split(/[?#]/)[0];
+        if (!reference || /^(?:https?:|data:|mailto:|#)/i.test(reference)) continue;
+        const target = path.resolve(path.dirname(file), reference);
+        if (!fs.existsSync(target)) missingAssets.push(`${path.relative(ROOT, file)} -> ${reference}`);
+    }
+}
+check("All local HTML assets exist", missingAssets.length === 0, missingAssets.join(" | "));
+
+const appHtml = fs.readFileSync(path.join(APP, "index.html"), "utf8");
+check("Workspace JSON input is physically present", /id=["']dataLabWorkspaceInput["']/.test(appHtml));
+check("Removed value-normalization panel is absent", !/technicalNormalizationElements|normalizationRulesContainer/.test(appHtml));
+check("Dedicated stock-clear action is present", /id=["']workspaceClearStockButton["']/.test(appHtml));
+
+const sourceText = jsFiles.map((file) => fs.readFileSync(file, "utf8")).join("\n");
+check("Application source does not use eval", !/\beval\s*\(/.test(sourceText));
+check("Application source does not use Function constructor", !/\bnew\s+Function\s*\(/.test(sourceText));
+check("Legacy data-lab-engine reference is absent", !/data-lab-engine\.js/.test(appHtml + sourceText));
+
+const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
+const constants = fs.readFileSync(path.join(APP, "src", "constants.js"), "utf8");
+const uiVersion = appHtml.match(/data-app-version[^>]*>([^<]+)</)?.[1]?.trim();
+const constantVersion = constants.match(/version:\s*["']([^"']+)["']/)?.[1];
+check("Package, UI and runtime versions match", pkg.version === uiVersion && uiVersion === constantVersion, `${pkg.version}/${uiVersion}/${constantVersion}`);
+
+const workspaceStorage = fs.readFileSync(path.join(APP, "src", "workspace-storage.js"), "utf8");
+const serializer = fs.readFileSync(path.join(APP, "src", "spreadsheet-engine.js"), "utf8");
+const storageSchema = workspaceStorage.match(/SCHEMA_VERSION\s*=\s*(\d+)/)?.[1];
+const serializerSchema = serializer.match(/schemaVersion:\s*(\d+)/)?.[1];
+check("Workspace schema version is consistent", storageSchema === serializerSchema, `${storageSchema}/${serializerSchema}`);
+
+const rootHtml = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+check("Root entry redirects to the application", /apps\/materials\/index\.html/.test(rootHtml));
+
+const passed = checks.filter(Boolean).length;
+console.log(`\n${passed}/${checks.length} checks passed.`);
+if (passed !== checks.length) process.exitCode = 1;
