@@ -47,6 +47,8 @@
         const outliers = input.outliers;
         const correlations = input.correlations;
         const insights = input.insights || [];
+        const domain = input.domain || { domain: "generic", label: "Analiza ogólna" };
+        const domainAnalysis = input.domainAnalysis || { kpis: [], warnings: [], rankings: {} };
         const methodology = input.methodology || {};
         const options = input.options || {};
         const dateRange = trends?.dateRange;
@@ -54,10 +56,16 @@
         const sampled = Boolean(methodology.profileSampled);
 
         const executiveSummary = [];
+        executiveSummary.push(`Rozpoznany typ danych: ${domain.label} (pewność ${formatPercent(domain.confidence)}).`);
         executiveSummary.push(`Przeanalizowano ${profile.rowCount.toLocaleString("pl-PL")} wierszy i ${profile.columnCount} kolumn.`);
         executiveSummary.push(`Ocena jakości danych wynosi ${quality.score}/100 (${quality.grade}).`);
+        (domainAnalysis.kpis || []).slice(0, 3).forEach((kpi) => {
+            const formatted = kpi.format === "percent" ? formatPercent(kpi.value) : `${formatNumber(kpi.value)}${kpi.suffix || ""}`;
+            executiveSummary.push(`${kpi.label}: ${formatted}.`);
+        });
+        const scheduleDomain = ["delivery_tracking", "procurement_plan", "hierarchical_delivery_plan", "unloading_events"].includes(domain.domain);
         const strongestTrend = trends?.trends?.[0];
-        if (strongestTrend) executiveSummary.push(`${strongestTrend.label}: trend ${directionLabel(strongestTrend.direction)}, zmiana między skrajnymi okresami ${formatPercent(strongestTrend.changePercent)}.`);
+        if (strongestTrend && !scheduleDomain) executiveSummary.push(`${strongestTrend.label}: trend ${directionLabel(strongestTrend.direction)}, zmiana między skrajnymi okresami ${formatPercent(strongestTrend.changePercent)}.`);
         if (outliers?.total) executiveSummary.push(`Wykryto ${outliers.total} potencjalnych anomalii, w tym ${outliers.high} o wysokiej ważności.`);
         if (sampled) executiveSummary.push(`Profilowanie wykonano w trybie próbkowanym na ${Number(methodology.profiledRows || 0).toLocaleString("pl-PL")} rekordach; kontrole krytyczne zachowują pełne liczniki tam, gdzie moduł to deklaruje.`);
 
@@ -70,7 +78,9 @@
         ];
 
         const trendParagraphs = trends?.trends?.length ? [
-            `Analizę czasu wykonano w granulacji: ${trends.granularity}. Każda miara używa agregacji wynikającej z jej roli semantycznej.`,
+            scheduleDomain
+                ? `Rozkład wartości w czasie wykonano w granulacji: ${trends.granularity}. Dla harmonogramu dostaw nie jest on interpretowany jako prognoza popytu ani trwały trend biznesowy.`
+                : `Analizę czasu wykonano w granulacji: ${trends.granularity}. Każda miara używa agregacji wynikającej z jej roli semantycznej.`,
             ...trends.trends.slice(0, 5).map((trend) => `${trend.label}: trend ${directionLabel(trend.direction)}, agregacja ${aggregationLabel(trend.aggregation)}, zmiana ${formatPercent(trend.changePercent)}, R² ${formatNumber(trend.r2)}, zmienność ${formatPercent(trend.volatility)}, liczba okresów ${trend.periods}.`)
         ] : ["Brak wystarczających danych do wiarygodnej analizy trendu."];
 
@@ -86,8 +96,20 @@
                 ]
             },
             {
+                id: "domain",
+                title: "2. Analiza biznesowa",
+                paragraphs: [
+                    `Rozpoznany obszar: ${domain.label}. Pewność klasyfikacji: ${formatPercent(domain.confidence)}.`,
+                    ...(domainAnalysis.warnings || []).slice(0, 6)
+                ],
+                bullets: [
+                    ...(domainAnalysis.kpis || []).map((kpi) => `${kpi.label}: ${kpi.format === "percent" ? formatPercent(kpi.value) : `${formatNumber(kpi.value)}${kpi.suffix || ""}`}`),
+                    ...Object.entries(domainAnalysis.rankings || {}).flatMap(([name, items]) => (items || []).slice(0, 3).map((item) => `${name}: ${item.label} — ${formatNumber(item.value)}`))
+                ]
+            },
+            {
                 id: "quality",
-                title: "2. Jakość danych",
+                title: "3. Jakość danych",
                 paragraphs: [
                     `Wynik jakości: ${quality.score}/100, klasa ${quality.grade}.`,
                     `Brakujące komórki: ${quality.summary.missingCells.toLocaleString("pl-PL")}. Duplikaty: ${quality.summary.duplicateRows.toLocaleString("pl-PL")}. Problemy wysokiej ważności: ${quality.summary.high}; średniej: ${quality.summary.medium}.`
@@ -96,13 +118,13 @@
             },
             {
                 id: "trends",
-                title: "3. Trendy i zmiany okresowe",
+                title: "4. Trendy i zmiany okresowe",
                 paragraphs: trendParagraphs,
                 bullets: comparisons?.comparisons?.slice(0, 5).map((item) => `${item.label}: ${item.currentPeriod} vs ${item.previousPeriod}: ${formatNumber(item.absoluteChange)} (${formatPercent(item.percentageChange)}).`) || []
             },
             {
                 id: "anomalies",
-                title: "4. Anomalie",
+                title: "5. Anomalie",
                 paragraphs: [outliers?.total
                     ? `Wykryto ${outliers.total} potencjalnych anomalii metodami IQR i robust Z-score. Wysoka ważność: ${outliers.high}; średnia: ${outliers.medium}; niska: ${outliers.low}.`
                     : "Nie wykryto istotnych anomalii przy zastosowanych progach."],
@@ -110,25 +132,25 @@
             },
             {
                 id: "correlations",
-                title: "5. Zależności",
+                title: "6. Zależności",
                 paragraphs: correlations?.numericPairs?.length ? correlations.numericPairs.slice(0, 5).map((item) => `${item.leftLabel} ↔ ${item.rightLabel}: Pearson ${formatNumber(item.pearson)}, Spearman ${formatNumber(item.spearman)}, n=${item.sampleSize}.`) : ["Nie znaleziono wystarczająco silnych lub licznych zależności między miarami."],
                 bullets: ["Zależność statystyczna nie jest dowodem związku przyczynowego."]
             },
             {
                 id: "recommendations",
-                title: "6. Rekomendowane działania",
+                title: "7. Rekomendowane działania",
                 paragraphs: actions.length ? [] : ["Brak działań o wystarczającej ważności przy aktualnych progach reguł."],
                 bullets: actions
             },
             {
                 id: "methodology",
-                title: "7. Metodyka",
+                title: "8. Metodyka",
                 paragraphs: methodologyParagraphs,
                 bullets: uniqueStrings((trends?.trends || []).slice(0, 8).map((trend) => `${trend.label}: ${aggregationLabel(trend.aggregation)}.`), 8)
             },
             {
                 id: "limitations",
-                title: "8. Ograniczenia analizy",
+                title: "9. Ograniczenia analizy",
                 paragraphs: [
                     "Wyniki opierają się wyłącznie na danych przekazanych do aplikacji i nie uwzględniają informacji zewnętrznych.",
                     "Automatyczna klasyfikacja kolumn i anomalie mają charakter rekomendacyjny; decyzje operacyjne wymagają weryfikacji biznesowej.",

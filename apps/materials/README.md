@@ -1,122 +1,95 @@
-# Materials Analytics 1.5.0 — dokumentacja techniczna
+# Materials Analytics 1.7.1 — dokumentacja techniczna
 
-## Model uruchomieniowy
+## Runtime
 
-Aplikacja jest statyczna, działa w przeglądarce i nie ma backendu. Dane, statystyki, SQL, raporty i eksporty są przetwarzane lokalnie. Nie ma integracji z AI, LLM, chmurą ani zewnętrznym API.
+Aplikacja statyczna: HTML, CSS i JavaScript uruchamiane lokalnie przez HTTP. Brak backendu, AI i zewnętrznych API.
 
-## Moduły bazowe
+Główne biblioteki runtime są dostarczane lokalnie:
 
-- `constants.js` — definicje pól, limity, progi i wersja runtime;
-- `state.js` — centralny stan i zdarzenia;
-- `utils.js` — tekst, daty, liczby, formaty i walidacja;
-- `import-engine.js` — Excel/CSV, wiele plików, arkusze i nagłówki;
-- `mapping-engine.js` — mapowanie źródła na role analityczne;
-- `value-normalization-engine.js` — techniczne ujednolicanie wartości bez osobnej sekcji UI;
-- `normalization-engine.js` — walidacja i budowa rekordu analitycznego;
-- `pivot-engine.js` — filtry, Pivot Table i podsumowania;
-- `decision-engine.js` — Coverage, ABC/Pareto i planowanie;
-- `chart-engine.js` — wykresy;
-- `export-engine.js` — eksport analizy;
-- `workspace-storage.js` — IndexedDB i fallback localStorage;
-- `formula-engine.js` — parser/evaluator bez wykonania kodu;
-- `spreadsheet-engine.js` — wirtualny arkusz, transformacje, zapasy, Workspace i eksport;
-- `app.js` — inicjalizacja oraz koordynacja workflow.
+- SheetJS;
+- Chart.js;
+- DuckDB-WASM.
 
-## Smart Analytics
+## Nowy moduł `workbook-model-engine.js`
 
-Katalog `src/analytics/`:
+Moduł odpowiada za wieloarkuszowy model danych.
 
-- `rules/analytics-rules.js` — wersjonowane role, progi, agregacje i zasady rekomendacji;
-- `analytics-core.js` — wspólne funkcje statystyczne, sampling i normalizacja;
-- `schema-profiler.js` — fizyczne typy, rozkład, unikalność i dowody;
-- `semantic-role-engine.js` — semantyczne role biznesowe;
-- `descriptive-statistics.js` — statystyki opisowe;
-- `data-quality-engine.js` — braki, duplikaty, typy mieszane i spójność;
-- `outlier-engine.js` — IQR, MAD robust Z-score i anomalie lokalne;
-- `trend-engine.js` — szeregi czasowe, granularność, regresja i zmienność;
-- `period-comparison-engine.js` — zmiany okres do okresu i contributors;
-- `correlation-engine.js` — Pearson, Spearman, eta² i Cramér’s V;
-- `confidence-engine.js` — wspólna ocena confidence;
-- `pivot-recommender.js` — rekomendacje i JavaScript materializer Pivot;
-- `chart-recommender.js` — dobór wykresów;
-- `insight-engine.js` — regułowe wnioski, ryzyka i działania;
-- `report-generator.js` — raport szablonowy i metodologia;
-- `analytics-orchestrator.js` — kolejność etapów i struktura wyniku;
-- `analytics.worker.js` — izolacja kosztownych obliczeń;
-- `duckdb-engine.js` — lokalny adapter DuckDB-WASM;
-- `smart-analytics-engine.js` — UI, eksport, wykresy i integracja z Workspace.
-
-## Pipeline
+### API
 
 ```text
-rows + fields + options
-→ schema profile
-→ semantic roles
-→ descriptive statistics
-→ data quality
-→ outliers
-→ trends
-→ period comparisons
-→ correlations
-→ recommended pivots
-→ recommended charts
-→ rule-based insights
-→ template report
+initialize()
+destroy()
+prepareFromWorkbook(options)
+analyzeSheetDetached(sheetName, headerRowIndex)
+autoMapRole(role, headers, detectedTypes)
+buildDataModel()
+resolveJoinField(strategy, usageRows, stockRows)
+getMaterialIdentity(record)
+getInventoryRows(visibleUsageRows)
+stockFieldDefinitions()
 ```
 
-Wynik zawiera `datasetProfile`, `schema`, `descriptive`, `quality`, `outliers`, `trends`, `periodComparisons`, `correlations`, `pivots`, `recommendedCharts`, `insights`, `report`, `methodology` i `execution`.
-
-## Metodologia i agregacje
-
-- Quick mode: ograniczona próbka dla profilowania i kosztownych obliczeń.
-- Full mode: pełne statystyki jakościowe/opisowe; bounded sample może pozostać dla type detection i korelacji.
-- Outliers: IQR oraz robust Z-score oparty na MAD.
-- Stock: `latest` według daty i kolejności rekordu.
-- Price, percentage, duration: `average`.
-- Quantity, currency, cost, generic measure: `sum`.
-
-Raport zawsze przechowuje liczbę wierszy, tryb, sampling, metody i wersję reguł.
-
-## DuckDB-WASM
-
-Lokalne pliki znajdują się w `vendor/duckdb/`:
+### Stan
 
 ```text
-duckdb-browser.bundle.mjs
-duckdb-browser-mvp.worker.js
-duckdb-mvp.wasm
+import.dataModel
+  enabled
+  status
+  joinStrategy
+  resolvedJoinField
+  generatedUsageSheet
+  roles[]
+  audit
+  preparedAt
+
+dataset.stockRows
+dataset.receiptRows
+dataset.orderRows
+dataset.materialMasterRows
+dataset.modelJoinAudit
 ```
 
-Adapter:
+Każdy element `roles[]` przechowuje `sheetName`, `role`, `headerRowIndex`, `mapping`, `stockMode`, nagłówki i typy wykryte dla konkretnego arkusza.
 
-- ładuje runtime wyłącznie lokalnie;
-- rejestruje tymczasowy JSON jako tabelę;
-- generuje CTE `base`, `grouped`, `totals`;
-- używa prawdziwego total z rekordów źródłowych;
-- obsługuje `sum`, `average`, `min`, `max`, `count` i `latest`;
-- usuwa tabelę i plik po wykonaniu;
-- w przypadku niedostępności SQL pozostawia JavaScript fallback.
+### Przepływ
 
-## Workspace
+1. `import-engine.js` czyta cały workbook i wywołuje `prepareFromWorkbook()`.
+2. UI pozwala przypisać role i mapowania.
+3. `buildDataModel()` parsuje wszystkie przypisane arkusze.
+4. Transakcje zużycia są materializowane jako wirtualny arkusz `Model danych — Zużycie`.
+5. Pozostałe role trafiają do osobnych tablic stanu.
+6. `normalization-engine.js` normalizuje wirtualny arkusz przy zachowaniu oryginalnego provenance.
+7. `decision-engine.js` pobiera stan przez `workbookModelEngine.getInventoryRows()`.
 
-- schemat: **v4**;
-- autosave: IndexedDB;
-- fallback: localStorage;
-- eksport/import: Workspace JSON;
-- wynik Smart Analytics jest serializowany;
-- import jest transakcyjny i waliduje strukturę przed zastąpieniem stanu.
+## Integracja
 
-## Zasady bezpieczeństwa
+- `app.js` inicjalizuje moduł przed normalizacją.
+- `state.js` przechowuje model i tabele pomocnicze.
+- `decision-engine.js` używa wspólnej identyfikacji materiałów oraz obliczonego stanu efektywnego.
+- `spreadsheet-engine.js` zapisuje model w Workspace v5 i eksportuje osobne arkusze pomocnicze.
+- `workspace-storage.js` obsługuje schemat v5.
 
-- brak `eval` i `new Function` w kodzie aplikacji;
-- brak zewnętrznych URL w Smart Analytics;
-- brak wykonania kodu z formuł użytkownika;
-- CSV injection protection;
-- bounded rendering i bounded sampling;
-- jawne limitations/confidence zamiast ukrywania słabej jakości wyniku.
+## Reguły stanu
+
+Snapshot jest autorytatywny. Stan początkowy jest przeliczany przez przyjęcia i zużycie po jego dacie. Dla filtra historycznego nie wolno użyć snapshotu z przyszłości.
+
+## Edytor ręczny
+
+Ręczny rekord obsługuje nazwę, kod, SKU, snapshot/stan początkowy, datę, jednostkę, lead time, MOQ, krotność, safety stock, otwarte zamówienia i dostawcę.
 
 ## Testy
 
-Pełny zestaw: `npm test` w katalogu głównym.
+Dedykowany test `verification/workbook-model-test.js` sprawdza:
 
-Łącznie: **222/222** kontroli, w tym 8 rzeczywistych testów instancjacji dołączonego DuckDB-WASM i wykonania SQL.
+- pięć ról arkuszy;
+- niezależne mapowania;
+- automatyczny klucz po kodzie materiału;
+- zachowanie provenance;
+- stan początkowy, przyjęcia i zużycie;
+- snapshot bez ponownego odejmowania;
+- historyczny as-of bez przyszłego snapshotu;
+- enrichment kartoteką i zamówieniami;
+- alias nazwa ↔ kod dla danych ręcznych;
+- zapis modelu w Workspace.
+
+Pełny pakiet: **293/293** kontroli.

@@ -11,6 +11,7 @@
         if (!trendResult?.dateField || !trendResult?.granularity) return { comparisons: [], reason: "Brak szeregu czasowego." };
         const dateField = trendResult.dateField;
         const granularity = trendResult.granularity;
+        const dateConvention = trendResult.dateConvention || "dmy";
         const dimensionField = options.dimensionField || descriptive?.primaryDimensionField || null;
         const comparisons = [];
 
@@ -36,8 +37,8 @@
                     target.set(dimension, item);
                 };
                 rows.forEach((row) => {
-                    const date = core.parseDate(row?.[dateField]);
-                    const period = core.periodKey(date, granularity);
+                    const date = core.parseDate(row?.[dateField], { convention: dateConvention });
+                    const period = core.periodKey(date, granularity, { convention: dateConvention });
                     if (!date || ![current.period, previous.period].includes(period)) return;
                     const dimension = core.isBlank(row?.[dimensionField]) ? "(brak)" : String(row[dimensionField]);
                     const value = core.parseNumber(row?.[trend.fieldId]);
@@ -69,7 +70,7 @@
             });
         });
 
-        return { dateField, granularity, dimensionField, comparisons };
+        return { dateField, dateConvention, granularity, dimensionField, comparisons };
     }
 
     Object.defineProperty(PMA, "periodComparisonEngine", {

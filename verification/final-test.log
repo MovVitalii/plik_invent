@@ -1,5 +1,5 @@
 
-> materials-analytics@1.5.0 test
+> materials-analytics@1.7.1 test
 > node verification/run-tests.js
 
 PASS — All application JavaScript files parse
@@ -8,21 +8,31 @@ PASS — All local HTML assets exist
 PASS — Workspace JSON input is physically present
 PASS — Removed value-normalization panel is absent
 PASS — Dedicated stock-clear action is present
+PASS — Manual decision-data form is present
+PASS — Data editor exposes direct cell editing
+PASS — Smart Analytics SQL mode is explicit
+PASS — Smart Analytics verification tab is present
 PASS — Smart Analytics workspace is present
 PASS — Smart Analytics is workflow step 6
 PASS — Application source does not use eval
 PASS — Application source does not use Function constructor
+PASS — Data editor runtime exposes direct cell editing
+PASS — Smart Analytics emits a deterministic audit trail
 PASS — Legacy data-lab-engine reference is absent
 PASS — All Smart Analytics modules exist
 PASS — Smart Analytics uses a dedicated Web Worker
 PASS — Smart Analytics source contains no external service URL
 PASS — Local DuckDB-WASM runtime is bundled
-PASS — Package, UI and runtime versions match (1.5.0/1.5.0/1.5.0)
-PASS — Workspace schema version is consistent (4/4)
+PASS — Package, UI and runtime versions match (1.7.1/1.7.1/1.7.1)
+PASS — Workspace schema version is consistent (5/5)
 PASS — Root entry redirects to the application
 PASS — Windows launcher has a PowerShell fallback with WASM MIME support
+PASS — Workbook Data Model documentation is bundled
+PASS — Workbook Data Model example workbook is bundled
+PASS — Workbook model mapping is not duplicated in preparation step
+PASS — Workbook model performs quality validation automatically
 
-19/19 checks passed.
+29/29 checks passed.
 PASS — Local DuckDB browser bundle exists
 PASS — Local DuckDB worker exists
 PASS — Local DuckDB WASM exists
@@ -82,58 +92,66 @@ PASS — Template insights are generated
 PASS — Structured Polish report is generated
 PASS — Methodology records analysis mode, samples and rule version
 PASS — Execution metadata starts with deterministic local JavaScript engines
+PASS — Audit trail contains an engine and data fingerprint
+PASS — Dataset fingerprint is reproducible for identical data
+PASS — Dataset fingerprint changes when an analytical value changes
+PASS — Audit trail exposes methods and verification checks
 PASS — Pipeline progress reaches 100% (100)
 PASS — No external AI service is declared
 
-32/32 checks passed.
-PASS — Full schema profiling handles 150,000 rows without argument overflow (2251 ms)
+36/36 checks passed.
+PASS — Full schema profiling handles 150,000 rows without argument overflow (2679 ms)
 PASS — Internal fields are excluded from automatic analytics
 PASS — Large numeric minimum and maximum are correct
-PASS — Smart Analytics quick pipeline handles 50,000 rows (1827 ms)
+PASS — Smart Analytics quick pipeline handles 50,000 rows (2923 ms)
 PASS — 50,000-row pipeline reaches 100% (100)
 PASS — 50,000-row pipeline detects the injected anomaly
 PASS — 50,000-row pipeline produces trends and comparisons
 PASS — 50,000-row pipeline remains deterministic and local
-PASS — 50,000-row pipeline completes within the regression budget (1827 ms)
+PASS — 50,000-row pipeline completes within the regression budget (2923 ms)
 
 9/9 checks passed.
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /styles.css?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /vendor/xlsx.full.min.js HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /vendor/chart.umd.js HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/constants.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/state.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/utils.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/dom.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/import-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/mapping-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/value-normalization-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/normalization-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/pivot-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/decision-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/chart-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/export-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/workspace-storage.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/formula-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/spreadsheet-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/analytics/rules/analytics-rules.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/analytics/analytics-core.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/analytics/schema-profiler.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/analytics/semantic-role-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/analytics/descriptive-statistics.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/analytics/data-quality-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/analytics/outlier-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/analytics/trend-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/analytics/period-comparison-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/analytics/correlation-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/analytics/confidence-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/analytics/pivot-recommender.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/analytics/chart-recommender.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/analytics/insight-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/analytics/report-generator.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/analytics/analytics-orchestrator.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/analytics/duckdb-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /src/analytics/smart-analytics-engine.js?build=mrqx19o3 HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:40] "GET /app.js?build=mrqx19o3 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /styles.css?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /vendor/xlsx.full.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /vendor/chart.umd.js HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/constants.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/state.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/utils.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/dom.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/import-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/mapping-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/workbook-model-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/value-normalization-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/normalization-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/pivot-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/decision-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/chart-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/export-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/workspace-storage.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/formula-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/spreadsheet-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/rules/analytics-rules.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/analytics-core.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/schema-profiler.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/semantic-role-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/workbook-intelligence-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/domain-classifier.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/domain-analysis-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/descriptive-statistics.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/data-quality-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/outlier-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/trend-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/period-comparison-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/correlation-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/confidence-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/pivot-recommender.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/chart-recommender.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/insight-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/report-generator.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/analytics-orchestrator.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/duckdb-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /src/analytics/smart-analytics-engine.js?build=mrsu6rhk HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:30] "GET /app.js?build=mrsu6rhk HTTP/1.1" 200 -
 
 --- boot ---
 PASS — app booted (body.app-ready)
@@ -197,6 +215,7 @@ PASS — Smart Analytics analyzed all rows
 PASS — Smart Analytics profile table is rendered
 PASS — Smart Analytics quality findings are rendered
 PASS — Smart Analytics report is rendered
+PASS — Smart Analytics verification audit is rendered
 PASS — Smart Analytics progress reaches 100
 PASS — Filtered Smart Analytics scope is recorded
 PASS — Filtered Smart Analytics result invalidates after filter change
@@ -213,44 +232,116 @@ PASS — decisionSection re-locked after reset
 PASS — no window 'error' events
 PASS — no console.error calls
 
-58/58 checks passed.
-127.0.0.1 - - [18/Jul/2026 22:05:41] "GET /styles.css?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:41] "GET /vendor/xlsx.full.min.js HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:41] "GET /vendor/chart.umd.js HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:41] "GET /src/constants.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:41] "GET /src/state.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:41] "GET /src/utils.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:41] "GET /src/dom.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:41] "GET /src/import-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:41] "GET /src/mapping-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:41] "GET /src/value-normalization-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:41] "GET /src/normalization-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/pivot-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/decision-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/chart-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/export-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/workspace-storage.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/formula-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/spreadsheet-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/analytics/rules/analytics-rules.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/analytics/analytics-core.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/analytics/schema-profiler.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/analytics/semantic-role-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/analytics/descriptive-statistics.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/analytics/data-quality-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/analytics/outlier-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/analytics/trend-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/analytics/period-comparison-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/analytics/correlation-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/analytics/confidence-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/analytics/pivot-recommender.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/analytics/chart-recommender.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/analytics/insight-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/analytics/report-generator.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/analytics/analytics-orchestrator.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/analytics/duckdb-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /src/analytics/smart-analytics-engine.js?build=mrqx1arp HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:42] "GET /app.js?build=mrqx1arp HTTP/1.1" 200 -
+59/59 checks passed.
+127.0.0.1 - - [20/Jul/2026 06:21:31] "GET /styles.css?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:31] "GET /vendor/xlsx.full.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /vendor/chart.umd.js HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/constants.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/state.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/utils.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/dom.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/import-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/mapping-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/workbook-model-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/value-normalization-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/normalization-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/pivot-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/decision-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/chart-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/export-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/workspace-storage.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/formula-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/spreadsheet-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/rules/analytics-rules.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/analytics-core.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/schema-profiler.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/semantic-role-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/workbook-intelligence-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/domain-classifier.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/domain-analysis-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/descriptive-statistics.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/data-quality-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/outlier-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/trend-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/period-comparison-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/correlation-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/confidence-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/pivot-recommender.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/chart-recommender.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/insight-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/report-generator.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/analytics-orchestrator.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/duckdb-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /src/analytics/smart-analytics-engine.js?build=mrsu6st5 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:32] "GET /app.js?build=mrsu6st5 HTTP/1.1" 200 -
+PASS — Workbook model engine exists
+PASS — Workbook model panel exists
+PASS — Five sheet roles are parsed
+PASS — Join field resolves to material code (materialCode)
+PASS — Join audit matches both usage materials ({"usageRows":3,"stockRows":2,"receiptRows":1,"orderRows":1,"materialMasterRows":2,"usageMaterials":2,"stockMaterials":2,"matchedMaterials":2,"unmatchedUsage":[],"unmatchedStock":[],"duplicateStockSnapshots":[],"ambiguousAliases":[],"negativeStockRows":[],"unitMismatches":[],"resolvedJoinField":"materialCode","errors":[],"warnings":[]})
+PASS — Generated usage sheet becomes active
+PASS — Ancillary tables are stored independently
+PASS — Workbook model hides the duplicate single-sheet mapping panel
+PASS — Workbook model shows the mapping-complete summary
+PASS — Workbook model runs quality validation during build
+PASS — All usage rows are normalized
+PASS — Original usage provenance is preserved
+PASS — Opening stock subtracts usage and adds receipts ({"materialKey":"MAT-A","material":"Folia","stock":75,"originalStock":100,"stockMode":"opening","stockDate":"2026-01-01","asOfDate":"2026-01-04","usageSince":30,"receiptsSince":5,"staleDays":3,"timestamp":1767225600000,"unit":"szt.","leadTimeDays":14,"minimumOrderQuantity":40,"orderMultiple":10,"safetyStock":15,"openOrders":20,"supplier":"Supplier X","sourceFile":"workbook-model-test.xlsx","sourceSheet":"Zapasy","sourceRow":2})
+PASS — Opening stock is calculated independently per material ({"materialKey":"MAT-B","material":"Karton","stock":45,"originalStock":50,"stockMode":"opening","stockDate":"2026-01-01","asOfDate":"2026-01-04","usageSince":5,"receiptsSince":0,"staleDays":3,"timestamp":1767225600000,"unit":"szt.","leadTimeDays":7,"minimumOrderQuantity":null,"orderMultiple":null,"safetyStock":5,"openOrders":0,"supplier":null,"sourceFile":"workbook-model-test.xlsx","sourceSheet":"Zapasy","sourceRow":3})
+PASS — Name-only master data enriches code-based stock through aliases
+PASS — Opening stock includes usage recorded on the opening date ({"materialKey":"MAT-A","material":"Folia","stock":75,"originalStock":100,"stockMode":"opening","stockDate":"2026-01-01","asOfDate":"2026-01-04","usageSince":30,"receiptsSince":5,"staleDays":3,"timestamp":1767225600000,"unit":"szt.","leadTimeDays":14,"minimumOrderQuantity":40,"orderMultiple":10,"safetyStock":15,"openOrders":20,"supplier":"Supplier X","sourceFile":"workbook-model-test.xlsx","sourceSheet":"Zapasy","sourceRow":2})
+PASS — Stock provenance is exposed
+PASS — Snapshot stock is authoritative and not reduced again ({"materialKey":"MAT-A","material":"Folia","stock":90,"originalStock":90,"stockMode":"snapshot","stockDate":"2026-01-05","asOfDate":"2026-01-05","usageSince":0,"receiptsSince":0,"staleDays":0,"timestamp":1767571200000,"unit":"szt.","leadTimeDays":14,"minimumOrderQuantity":40,"orderMultiple":10,"safetyStock":15,"openOrders":20,"supplier":"Supplier X","sourceFile":"workbook-model-test.xlsx","sourceSheet":"Zapasy","sourceRow":2})
+PASS — Historical as-of date never uses a future stock snapshot
+PASS — Manual name-only stock matches code-based usage through aliases ({"materialKey":"MAT-A","material":"Folia","stock":88,"originalStock":88,"stockMode":"snapshot","stockDate":"2026-01-06","asOfDate":"2026-01-06","usageSince":0,"receiptsSince":0,"staleDays":0,"timestamp":1767657600000,"unit":"szt.","leadTimeDays":null,"minimumOrderQuantity":null,"orderMultiple":null,"safetyStock":null,"openOrders":null,"supplier":null,"sourceFile":null,"sourceSheet":null,"sourceRow":null})
+PASS — Workspace schema stores workbook data model
+PASS — Material code alone satisfies the workbook identity requirement
+PASS — Unmapped source columns survive the generated usage model
+PASS — Code-only opening stock includes usage from the same date ({"materialKey":"C-001","material":"C-001","stock":75,"originalStock":100,"stockMode":"opening","stockDate":"2026-02-01","asOfDate":"2026-02-02","usageSince":25,"receiptsSince":0,"staleDays":1,"timestamp":1769904000000,"unit":null,"leadTimeDays":null,"minimumOrderQuantity":null,"orderMultiple":null,"safetyStock":null,"openOrders":0,"supplier":null,"sourceFile":"code-only.xlsx","sourceSheet":"Zapas kodowy","sourceRow":2})
+PASS — No uncaught page errors occurred
+
+25/25 workbook model checks passed.
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /styles.css?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /vendor/xlsx.full.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /vendor/chart.umd.js HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/constants.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/state.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/utils.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/dom.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/import-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/mapping-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/workbook-model-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/value-normalization-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/normalization-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/pivot-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/decision-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/chart-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/export-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/workspace-storage.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/formula-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/spreadsheet-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/rules/analytics-rules.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/analytics-core.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/schema-profiler.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/semantic-role-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/workbook-intelligence-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/domain-classifier.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/domain-analysis-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/descriptive-statistics.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/data-quality-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/outlier-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/trend-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/period-comparison-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/correlation-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/confidence-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/pivot-recommender.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/chart-recommender.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/insight-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/report-generator.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/analytics-orchestrator.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/duckdb-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /src/analytics/smart-analytics-engine.js?build=mrsu6uml HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:34] "GET /app.js?build=mrsu6uml HTTP/1.1" 200 -
 PASS — Spreadsheet engine exists
 PASS — Spreadsheet engine initialized
 PASS — Formula engine exists
@@ -262,18 +353,24 @@ PASS — Editor unlocks after normalization
 PASS — All six original columns are preserved
 PASS — Original unmapped column value is retained
 PASS — Virtual grid renders four rows
+PASS — Cell selection enables explicit edit action
+PASS — Cell editor opens for an editable source cell
+PASS — Cell edit updates both source and mapped analytical value
+PASS — Undo restores a direct cell edit
 PASS — Formula engine evaluates column references
 PASS — Calculated column is added
 PASS — Calculated values are stored per row
 PASS — Transformation changes source and mapped analytical field
 PASS — Undo restores transformed values
 PASS — Redo reapplies transformed values
+PASS — Manual decision-data form creates a stock snapshot
+PASS — Manual decision-data snapshot can be edited
 PASS — Separate stock snapshot activates stock analytics
 PASS — Planning horizon respects lead time
 PASS — Open orders reduce required order
 PASS — Order quantity respects package multiple
 PASS — Forecast carries supplier and unit metadata
-PASS — Workspace schema v4 is generated
+PASS — Workspace schema v5 is generated
 PASS — Workspace stores deterministic Smart Analytics result
 PASS — Workspace restore returns all rows
 PASS — Workspace restore returns calculated columns
@@ -281,44 +378,127 @@ PASS — Workspace restore returns separate stock table
 PASS — Workspace restore returns Smart Analytics result
 PASS — No page errors
 
-29/29 checks passed.
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /styles.css?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /vendor/xlsx.full.min.js HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /vendor/chart.umd.js HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/constants.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/state.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/utils.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/dom.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/import-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/mapping-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/value-normalization-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/normalization-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/pivot-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/decision-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/chart-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/export-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/workspace-storage.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/formula-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/spreadsheet-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/analytics/rules/analytics-rules.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/analytics/analytics-core.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/analytics/schema-profiler.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/analytics/semantic-role-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/analytics/descriptive-statistics.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/analytics/data-quality-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/analytics/outlier-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/analytics/trend-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/analytics/period-comparison-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/analytics/correlation-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/analytics/confidence-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/analytics/pivot-recommender.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/analytics/chart-recommender.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/analytics/insight-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/analytics/report-generator.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/analytics/analytics-orchestrator.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/analytics/duckdb-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /src/analytics/smart-analytics-engine.js?build=mrqx1c5n HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:43] "GET /app.js?build=mrqx1c5n HTTP/1.1" 200 -
+35/35 checks passed.
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /styles.css?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /vendor/xlsx.full.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /vendor/chart.umd.js HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/constants.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/state.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/utils.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/dom.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/import-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/mapping-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/workbook-model-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/value-normalization-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/normalization-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/pivot-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/decision-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/chart-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/export-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/workspace-storage.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/formula-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/spreadsheet-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/rules/analytics-rules.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/analytics-core.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/schema-profiler.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/semantic-role-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/workbook-intelligence-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/domain-classifier.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/domain-analysis-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/descriptive-statistics.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/data-quality-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/outlier-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/trend-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/period-comparison-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/correlation-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/confidence-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/pivot-recommender.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/chart-recommender.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/insight-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/report-generator.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/analytics-orchestrator.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/duckdb-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /src/analytics/smart-analytics-engine.js?build=mrsu6wpc HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:37] "GET /app.js?build=mrsu6wpc HTTP/1.1" 200 -
+PASS — Workbook recommends the delivery register (Ewidencja dostaw)
+PASS — Recommended sheet is opened automatically (Ewidencja dostaw)
+PASS — Main sheet is classified as delivery tracking (delivery_tracking)
+PASS — Procurement sheet is classified correctly (procurement_plan)
+PASS — Old copy is marked as archive (archive)
+PASS — Ghost columns from A:IV are removed (11)
+PASS — Offset header row is detected (2)
+PASS — Plan-to-actual relation is detected
+PASS — Plan-to-actual order coverage is complete (2/1)
+PASS — Main import keeps the fourteen business columns (14)
+PASS — Main header row is detected at row 1
+PASS — Data editor is prepared automatically immediately after import
+PASS — General-sheet path preserves every imported row (3)
+PASS — Smart Analytics omits internal and empty derived fields (14)
+PASS — Main domain is delivery tracking (delivery_tracking)
+PASS — MDY date convention is inferred (mdy)
+PASS — US-style date is parsed as 2026-02-23
+PASS — Delivered quantity role is distinguished from ordered quantity (delivered_quantity)
+PASS — Remaining quantity role is detected (remaining_quantity)
+PASS — Repeated order numbers are not treated as unique-key violations
+PASS — Descriptive quantity is excluded and reported (1)
+PASS — Delivery completion KPI is calculated (0.644)
+PASS — Generic demand trend text is suppressed for delivery schedules
+PASS — Procurement domain is recognized (procurement_plan)
+PASS — Polish DMY date is parsed correctly
+PASS — Week-only planning marker is recognized
+PASS — Week-only marker is kept as a partial date, not a type error (1)
+PASS — Planning category semantic role is correct (planning_category)
+PASS — Language semantic role is correct (language)
+PASS — Placement code semantic role is correct (placement_code)
+PASS — Hierarchical delivery plan is recognized (delivery_tracking)
+PASS — Subtotal rows are excluded before totals (2)
+PASS — Blank material cells are filled down analytically (2)
+PASS — Source rows remain intact while analytical rows are prepared (6/4)
+PASS — Business-analysis section is included in the report
+PASS — No uncaught page errors occurred
+
+36/36 NCG workbook regression checks passed.
+127.0.0.1 - - [20/Jul/2026 06:21:38] "GET /styles.css?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:38] "GET /vendor/xlsx.full.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /vendor/chart.umd.js HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/constants.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/state.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/utils.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/dom.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/import-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/mapping-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/workbook-model-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/value-normalization-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/normalization-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/pivot-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/decision-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/chart-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/export-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/workspace-storage.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/formula-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/spreadsheet-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/rules/analytics-rules.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/analytics-core.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/schema-profiler.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/semantic-role-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/workbook-intelligence-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/domain-classifier.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/domain-analysis-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/descriptive-statistics.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/data-quality-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/outlier-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/trend-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/period-comparison-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/correlation-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/confidence-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/pivot-recommender.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/chart-recommender.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/insight-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/report-generator.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/analytics-orchestrator.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/duckdb-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /src/analytics/smart-analytics-engine.js?build=mrsu6y5k HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:39] "GET /app.js?build=mrsu6y5k HTTP/1.1" 200 -
 PASS — Workspace JSON input exists in the header
 PASS — Removed value-normalization UI does not exist
 PASS — Dedicated stock clear action exists
@@ -334,7 +514,7 @@ PASS — IF evaluates only the selected branch (7)
 PASS — IFERROR catches evaluation errors (fallback)
 PASS — MIN ignores blank values instead of coercing them to zero (5)
 PASS — Formula engine exposes dependencies (quantity,source__3)
-PASS — Clicking one header twice leaves one descending sort ([{"id":"sort-938c22c5-0c2e-4145-8d98-bd0599a11bc8","fieldId":"source__2","direction":"desc"}])
+PASS — Clicking one header twice leaves one descending sort ([{"id":"sort-e1993b44-32b8-426c-8aae-a85a762809de","fieldId":"source__2","direction":"desc"}])
 PASS — Date comparison filter uses chronological comparison
 PASS — Invalid numeric comparison filter is rejected
 PASS — Row checkbox enables delete action
@@ -356,57 +536,61 @@ PASS — Unit mismatch blocks invalid order calculations (Jednostka zapasu nie z
 PASS — Stock-only materials outside filtered usage are excluded
 PASS — CSV export keeps negative numbers numeric (-5)
 PASS — CSV export neutralizes spreadsheet formulas in text ("'=HYPERLINK(""x"")")
-PASS — Workspace schema is consistently v4
+PASS — Workspace schema is consistently v5
 PASS — Workspace contains source provenance
 PASS — Autosave preserves original project name
 PASS — Autosave can be cleared
 PASS — No browser errors during audit scenarios
 
 42/42 checks passed.
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /styles.css?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /vendor/xlsx.full.min.js HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /vendor/chart.umd.js HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/constants.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/state.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/utils.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/dom.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/import-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/mapping-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/value-normalization-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/normalization-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/pivot-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/decision-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/chart-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/export-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/workspace-storage.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/formula-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/spreadsheet-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/analytics/rules/analytics-rules.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/analytics/analytics-core.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/analytics/schema-profiler.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/analytics/semantic-role-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/analytics/descriptive-statistics.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/analytics/data-quality-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/analytics/outlier-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/analytics/trend-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/analytics/period-comparison-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/analytics/correlation-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/analytics/confidence-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/analytics/pivot-recommender.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/analytics/chart-recommender.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/analytics/insight-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/analytics/report-generator.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/analytics/analytics-orchestrator.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/analytics/duckdb-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /src/analytics/smart-analytics-engine.js?build=mrqx1dqj HTTP/1.1" 200 -
-127.0.0.1 - - [18/Jul/2026 22:05:45] "GET /app.js?build=mrqx1dqj HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /styles.css?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /vendor/xlsx.full.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /vendor/chart.umd.js HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/constants.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/state.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/utils.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/dom.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/import-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/mapping-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/workbook-model-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/value-normalization-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/normalization-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/pivot-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/decision-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/chart-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/export-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/workspace-storage.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/formula-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/spreadsheet-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/analytics/rules/analytics-rules.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/analytics/analytics-core.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:41] "GET /src/analytics/schema-profiler.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /src/analytics/semantic-role-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /src/analytics/workbook-intelligence-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /src/analytics/domain-classifier.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /src/analytics/domain-analysis-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /src/analytics/descriptive-statistics.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /src/analytics/data-quality-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /src/analytics/outlier-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /src/analytics/trend-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /src/analytics/period-comparison-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /src/analytics/correlation-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /src/analytics/confidence-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /src/analytics/pivot-recommender.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /src/analytics/chart-recommender.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /src/analytics/insight-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /src/analytics/report-generator.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /src/analytics/analytics-orchestrator.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /src/analytics/duckdb-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /src/analytics/smart-analytics-engine.js?build=mrsu70c0 HTTP/1.1" 200 -
+127.0.0.1 - - [20/Jul/2026 06:21:42] "GET /app.js?build=mrsu70c0 HTTP/1.1" 200 -
 PASS — Performance fixture app booted
 PASS — 50k rows load into the workspace
 PASS — Virtual grid renders a bounded DOM window (36)
 PASS — Decision aggregation handles 50k rows (100/650000)
 PASS — Formula evaluation handles 50k rows
 PASS — Workspace serialization preserves 50k rows
-PASS — 50k-row smoke test completes within the safety budget (2567 ms)
+PASS — 50k-row smoke test completes within the safety budget (3891 ms)
 PASS — No browser errors during 50k-row smoke test
 
-8/8 checks passed. (2567 ms)
+8/8 checks passed. (3891 ms)

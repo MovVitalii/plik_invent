@@ -1,129 +1,160 @@
-# Verification Report — Materials Analytics 1.5.0
+# Verification Report — Materials Analytics 1.7.1
 
-Data końcowej weryfikacji: 2026-07-19
+Data końcowej weryfikacji: 2026-07-20
 
 ## Wynik końcowy
 
 ```text
-Static Integrity & Security:     19/19
+Static Integrity & Security:     29/29
 Local DuckDB Package:            17/17
 DuckDB-WASM Runtime + SQL:         8/8
-Smart Analytics Logic:           32/32
+Smart Analytics Logic:           36/36
 Smart Analytics Performance:       9/9
-Application Integration:         58/58
-Spreadsheet Workspace:           29/29
+Application Integration:         59/59
+Workbook Data Model:             25/25
+Spreadsheet Workspace:           35/35
+NCG Workbook Regression:          36/36
 Regression Audit:                42/42
 Performance 50k:                   8/8
 ──────────────────────────────────────
-Łącznie:                        222/222
+Łącznie:                        304/304
 ```
 
-Wszystkie zadeklarowane testy automatyczne zakończyły się powodzeniem.
+Pełny przebieg znajduje się w `verification/final-test-v171.log`.
 
-## Kontrole statyczne i bezpieczeństwa
+## Integralność i bezpieczeństwo
 
 Potwierdzono:
 
-- poprawną składnię wszystkich modułów JavaScript aplikacji;
+- poprawną składnię wszystkich modułów JavaScript;
 - brak zduplikowanych identyfikatorów HTML;
-- istnienie wszystkich lokalnych odwołań `src` i `href`;
-- obecność całego modułowego pipeline Smart Analytics;
-- obecność osobnego Web Workera;
-- brak `eval` i konstruktora `Function` w kodzie aplikacji;
-- brak zewnętrznych URL w źródłach Smart Analytics;
-- lokalne dostarczenie bundle, worker i WASM DuckDB;
-- zgodność wersji pakietu, UI i runtime: 1.5.0;
-- zgodność schematu Workspace: v4;
-- poprawny launcher Windows oraz MIME `application/wasm`.
+- istnienie wszystkich lokalnych zasobów aplikacji;
+- zgodność wersji pakietu, UI i runtime: `1.7.1`;
+- zgodność schematu Workspace: `v5`;
+- brak `eval` i konstruktora `Function`;
+- brak zewnętrznych URL w Smart Analytics;
+- lokalne biblioteki SheetJS, Chart.js i DuckDB-WASM;
+- poprawny Windows launcher i obsługę MIME WebAssembly;
+- obecność formularza ręcznych danych decyzyjnych, Edytora danych i audytu Smart Analytics;
+- obecność dokumentacji Workbook Data Model oraz przykładowego skoroszytu XLSX.
 
-## Weryfikacja DuckDB-WASM
+## Workbook Data Model
 
-Sprawdzono dwa poziomy:
+Dedykowana regresja tworzy rzeczywisty skoroszyt z pięcioma arkuszami:
 
-1. **Integralność pakietu lokalnego** — obecność plików, nagłówek WASM, brak CDN, generowanie bezpiecznego SQL, konwersję wyniku i JavaScript fallback.
-2. **Rzeczywiste wykonanie** — dołączony `duckdb-mvp.wasm` został zainicjalizowany przez blokujące bindingi Node pakietu DuckDB-WASM, a SQL wygenerowany przez projekt został wykonany na testowej tabeli.
+```text
+Zużycie
+Zapasy
+Przyjęcia
+Zamówienia
+Kartoteka
+```
 
-Rzeczywisty test SQL potwierdził:
+Sprawdzono:
 
-- średnią w komórce pivot;
-- prawdziwą średnią total z rekordów źródłowych;
+- przypisanie pięciu ról;
+- niezależne mapowanie każdego arkusza;
+- brak powtórnego mapowania po zbudowaniu modelu;
+- automatyczną kontrolę jakości w etapie przygotowania;
+- ukrycie klasycznego panelu mapowania w trybie wieloarkuszowym;
+- automatyczny wybór `materialCode` jako klucza;
+- zgodność audytu dopasowań;
+- utworzenie wirtualnego arkusza zużycia;
+- osobne przechowywanie zapasów, przyjęć, zamówień i kartoteki;
+- zachowanie oryginalnego pliku, arkusza i numeru wiersza;
+- obliczenie stanu początkowego według wzoru `stan + przyjęcia - zużycie`;
+- wliczanie przyjęć i zużycia z dnia stanu początkowego;
+- niezależne obliczenie dla każdego materiału;
+- enrichment przez lead time, MOQ, krotność, safety stock, otwarte zamówienia i dostawcę;
+- identyfikację materiału tylko przez kod lub SKU, bez obowiązkowej nazwy;
+- zachowanie niezmapowanych kolumn źródłowych z tabeli zużycia;
+- enrichment kodowych danych zapasu kartoteką zawierającą tylko nazwę;
+- snapshot jako wartość autorytatywną bez ponownego odejmowania zużycia;
+- wykluczenie snapshotu z przyszłości przy analizie historycznej;
+- dopasowanie ręcznego wpisu tylko z nazwą do transakcji posiadających kod materiału;
+- serializację ról i tabel pomocniczych w Workspace v5;
+- brak nieobsłużonych błędów przeglądarkowych.
+
+Fixture kontrolny daje:
+
+```text
+Folia:
+stan początkowy 100
++ przyjęcia 5
+- zużycie 30
+= stan efektywny 75
+
+Karton:
+stan początkowy 50
+- zużycie 5
+= stan efektywny 45
+```
+
+## DuckDB-WASM
+
+Sprawdzono integralność plików lokalnych oraz rzeczywistą instancjację dołączonego WASM. Wykonane zapytania potwierdzają:
+
+- prawidłową średnią w komórce i totalu Pivot;
 - pomijanie pustych ciągów przez `count`;
-- prawidłowy total `count`;
-- najnowszy snapshot zapasu;
-- deterministyczny tie-breaker przy tej samej dacie;
-- zgodność wartości i total dla `latest`.
+- deterministyczny wybór najnowszego snapshotu;
+- zgodność JavaScript fallback.
 
-## Smart Analytics — zakres logiki
+DuckDB jest lokalnym silnikiem SQL, nie usługą AI.
+
+## Smart Analytics
 
 Testy obejmują:
 
-- fizyczne i semantyczne typy kolumn oraz confidence/evidence;
-- liczby, daty, kategorie, identyfikatory, ilości, zapasy, ceny i koszty;
-- braki, duplikaty, typy mieszane, kolumny stałe i błędne wartości;
-- IQR oraz robust Z-score/MAD;
-- anomalie globalne i lokalne;
-- role-aware aggregation;
-- trendy, granularność czasu, zmienność i jakość dopasowania;
-- porównania okresów i contributor analysis;
+- fizyczne i semantyczne typy kolumn;
+- confidence i evidence;
+- braki, duplikaty, typy mieszane i wartości błędne;
+- IQR i robust Z-score/MAD;
+- trendy i porównania okresów;
 - Pearson, Spearman, eta² i Cramér’s V;
-- rekomendacje Pivot Table i wykresów;
-- deterministyczne wnioski i raport szablonowy;
-- tryb szybki, tryb pełny oraz jawne metadane metodologiczne;
-- eksportowalny, serializowalny wynik.
+- rekomendowane Pivot Table i wykresy;
+- deterministyczne wnioski i raport;
+- fingerprint danych i audyt metodologii;
+- brak usług AI i danych zewnętrznych.
 
-## Testy wydajności Smart Analytics
+## Integracja aplikacji
 
-Fixture Smart Analytics potwierdza:
+Zweryfikowano:
 
-- profilowanie schematu na 150 000 wierszy w trybie kontrolowanym;
-- kompletny pipeline na 50 000 wierszy;
-- bounded sampling dla kosztownych kombinacji korelacyjnych;
-- brak materializacji pełnych tablic wartości w bucketach Pivot;
-- ukończenie w założonym budżecie bezpieczeństwa środowiska testowego.
+- import XLSX/XLS/XLSB/CSV i wykrywanie nagłówków;
+- mapowanie, walidację i normalizację;
+- zachowanie wszystkich kolumn źródłowych;
+- filtry, Pivot, wykresy i eksport;
+- Coverage Days, ryzyko, Pareto, ABC i zapotrzebowanie;
+- wirtualny Edytor danych, copy/paste, formuły, transformacje i Undo/Redo;
+- ręczne snapshoty i stany początkowe wraz z parametrami zamówień;
+- Workspace, autosave i odtworzenie projektu;
+- Smart Analytics UI i zakładkę Weryfikacja.
 
-## Zakres integracyjny aplikacji
+## Regresja NCG
 
-Zweryfikowano pełne uruchomienie aplikacji przez lokalny HTTP oraz:
+Na reprezentatywnym wieloarkuszowym skoroszycie dostaw potwierdzono:
 
-- lokalne SheetJS i Chart.js;
-- import, mapowanie, normalizację i zachowanie kolumn źródłowych;
-- filtry, Pivot Table, wykresy i eksport;
-- Coverage Days, ryzyko, ABC, Pareto i planowanie zapotrzebowania;
-- wirtualny arkusz, formuły, transformacje i Undo/Redo;
-- osobną tabelę zapasów;
-- lead time, otwarte zamówienia, MOQ, krotność, jednostki i dostawcę;
-- autosave, Workspace JSON, eksport i odtworzenie projektu;
-- krok Smart Analytics w pełnym UI;
-- brak błędów przeglądarkowych w scenariuszach testowych.
+- rekomendację głównego arkusza;
+- wykrycie planu zakupów i kopii archiwalnej;
+- usuwanie pustych `ghost columns`;
+- daty MDY/DMY, daty Excela i okresy `week 35`;
+- rozdzielenie ilości zamówionej, dostarczonej i pozostałej;
+- poprawne traktowanie wielopozycyjnych numerów zamówień;
+- Fill Down i wykluczenie subtotal rows;
+- dedykowane KPI realizacji dostaw.
 
-## Audyt regresyjny
+## Wydajność
 
-Ponownie sprawdzono między innymi:
+Sprawdzono:
 
-- numery wierszy źródłowych i pochodzenie z wielu plików;
-- parser formuł, zależności, zmianę nazw, cykle i dokładność `ROUND`;
-- chronologiczne filtry dat, filtry liczbowe i sortowanie;
-- wielokomórkowe wklejanie i strukturalne Undo/Redo;
-- sezonowość wieloletnią, mapowanie materiałów i zgodność jednostek;
-- kolejność MOQ i krotności;
-- ochronę eksportu CSV;
-- transakcyjne odrzucanie uszkodzonego Workspace.
-
-## Test 50 000 wierszy
-
-Potwierdzono:
-
-- zapis 50 000 rekordów;
-- ograniczony DOM wirtualnej tabeli;
-- agregację decyzyjną;
-- obliczenie kolumny formułowej;
-- serializację pełnego projektu;
-- brak błędów aplikacji.
-
-Ostatni pełny przebieg testów należy traktować jako test regresyjny i wydajnościowy środowiska CI, nie gwarancję identycznego czasu na każdym laptopie.
+- pełny Smart Analytics dla 50 000 wierszy;
+- profilowanie schematu dla 150 000 wierszy;
+- wirtualizację tabeli dla 50 000 wierszy;
+- formuły, agregację decyzyjną i serializację Workspace;
+- bounded sampling dla kosztownych korelacji.
 
 ## Granice potwierdzenia
 
-Raport potwierdza działanie zadeklarowanych funkcji w opisanych scenariuszach i rzeczywiste wykonanie lokalnego WASM/SQL w środowisku testowym. Nie stanowi matematycznego dowodu braku każdego możliwego błędu ani certyfikacji zgodności z całym Microsoft Excel.
+Raport potwierdza zadeklarowane scenariusze i rzeczywiste wykonanie runtime w środowisku testowym. Nie stanowi matematycznego dowodu braku każdego możliwego błędu w dowolnym pliku Excel.
 
-Smart Analytics nie wykonuje wnioskowania przyczynowego, nie korzysta z ML/LLM ani informacji spoza danych wejściowych. Wyniki o małej liczebności, słabej jakości danych lub niepewnej semantyce są oznaczane ograniczeniami i wymagają oceny człowieka.
+Aplikacja nie implementuje VBA, makr, natywnych obiektów Excel PivotTable, adresów `A1`, międzyarkuszowego `XLOOKUP` ani pełnego katalogu formuł Microsoft Excel. Wieloarkuszowe połączenia realizowane są przez jawny i audytowalny model ról biznesowych.

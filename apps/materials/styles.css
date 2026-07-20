@@ -1113,6 +1113,15 @@ tfoot td {
     border-radius: 7px;
 }
 
+.workbook-model-ready-summary strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.workbook-model-ready-summary span {
+    display: block;
+}
+
 .analysis-tip.is-success {
     color: var(--success);
     background: var(--success-soft);
@@ -1959,7 +1968,7 @@ canvas {
 }
 
 /* ==========================================================
-   Materials Analytics 1.5.0 · Spreadsheet workspace
+   Materials Analytics 1.7.1 · Spreadsheet workspace
 ========================================================== */
 
 .workflow {
@@ -2127,7 +2136,7 @@ canvas {
 }
 
 /* ==========================================================
-   v1.5.0 · Spreadsheet workspace
+   v1.7.1 · Spreadsheet workspace
 ========================================================== */
 .import-controls-extended {
     grid-template-columns: minmax(220px, 1fr) 150px auto auto;
@@ -2553,3 +2562,98 @@ canvas {
         padding: 0;
     }
 }
+
+/* Workbook intelligence */
+.workbook-intelligence-panel {
+    margin: 1rem 0;
+    padding: 1rem;
+    border: 1px solid var(--border-color, #d9dee7);
+    border-radius: 12px;
+    background: var(--surface-subtle, #f8fafc);
+}
+.workbook-intelligence-panel table { min-width: 760px; }
+.workbook-intelligence-panel tbody tr.is-recommended { background: rgba(37, 99, 235, 0.08); }
+.workbook-intelligence-panel tbody tr.is-warning td:first-child::after {
+    content: " ⚠";
+    color: #b45309;
+}
+
+.domain-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: .65rem;
+    margin: .75rem 0;
+}
+.domain-kpi {
+    padding: .7rem;
+    border: 1px solid var(--border-color, #d9dee7);
+    border-radius: 10px;
+    background: #fff;
+}
+.domain-kpi span { display: block; font-size: .78rem; color: #64748b; }
+.domain-kpi strong { display: block; margin-top: .2rem; font-size: 1.05rem; }
+.smart-domain-card { grid-column: 1 / -1; }
+
+/* Materials Analytics 1.6 — manual decision data and verification */
+.workspace-manual-stock {
+    margin: 0.85rem 0;
+    padding: 1rem;
+}
+.manual-stock-grid {
+    grid-template-columns: repeat(5, minmax(150px, 1fr));
+}
+.manual-stock-grid label small,
+.smart-controls label small {
+    display: block;
+    margin-top: 0.3rem;
+    color: var(--text-muted);
+    line-height: 1.35;
+}
+.workspace-grid td[data-row-id][data-field-id] { cursor: cell; }
+.workspace-grid td[data-row-id][data-field-id]:hover { background: #f7faff; }
+.smart-verification-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-bottom: 1rem;
+}
+.smart-verification-grid article {
+    padding: 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 0.65rem;
+    background: var(--surface-subtle);
+}
+.smart-verification-grid article span { display: block; color: var(--text-muted); font-size: 0.8rem; }
+.smart-verification-grid article strong { display: block; margin-top: 0.25rem; overflow-wrap: anywhere; }
+@media (max-width: 1200px) {
+    .manual-stock-grid { grid-template-columns: repeat(3, minmax(150px, 1fr)); }
+}
+@media (max-width: 760px) {
+    .manual-stock-grid, .smart-verification-grid { grid-template-columns: 1fr; }
+}
+
+/* Workbook Data Model */
+.workbook-model-panel {
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--border-color, #d9dee7);
+    border-radius: 14px;
+    background: var(--surface-secondary, #f8fafc);
+}
+.workbook-model-controls { margin-bottom: .8rem; }
+.workbook-model-mappings {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: .85rem;
+    margin-top: .9rem;
+}
+.workbook-model-mapping-card {
+    padding: .85rem;
+    border: 1px solid var(--border-color, #d9dee7);
+    border-radius: 12px;
+    background: var(--surface-primary, #fff);
+}
+.workbook-model-mapping-card h4 { margin: 0; }
+.workbook-model-fields { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+#workbookModelBody select, #workbookModelBody input { min-width: 130px; }
+#workbookModelAudit.is-success { border-left: 4px solid #1f9d55; }
+#workbookModelAudit.is-warning { border-left: 4px solid #d69e2e; }
+#workbookModelAudit.is-danger { border-left: 4px solid #d64545; }

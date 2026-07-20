@@ -57,16 +57,22 @@ const appHtml = fs.readFileSync(path.join(APP, "index.html"), "utf8");
 check("Workspace JSON input is physically present", /id=["']dataLabWorkspaceInput["']/.test(appHtml));
 check("Removed value-normalization panel is absent", !/technicalNormalizationElements|normalizationRulesContainer/.test(appHtml));
 check("Dedicated stock-clear action is present", /id=["']workspaceClearStockButton["']/.test(appHtml));
+check("Manual decision-data form is present", /id=["']workspaceManualStockMaterial["']/.test(appHtml) && /id=["']workspaceManualStockValue["']/.test(appHtml) && /id=["']workspaceSaveManualStockButton["']/.test(appHtml));
+check("Data editor exposes direct cell editing", /id=["']workspaceEditCellButton["']/.test(appHtml));
+check("Smart Analytics SQL mode is explicit", /id=["']smartAnalyticsSqlMode["']/.test(appHtml) && /value=["']auto["']/.test(appHtml));
+check("Smart Analytics verification tab is present", /data-smart-tab=["']verification["']/.test(appHtml) && /id=["']smartVerificationBody["']/.test(appHtml));
 check("Smart Analytics workspace is present", /id=["']smartAnalyticsSection["']/.test(appHtml) && /id=["']runSmartAnalyticsButton["']/.test(appHtml));
 check("Smart Analytics is workflow step 6", /data-target-section=["']smartAnalyticsSection["'][\s\S]*?workflow-number["']>6</.test(appHtml));
 
 const sourceText = jsFiles.map((file) => fs.readFileSync(file, "utf8")).join("\n");
 check("Application source does not use eval", !/\beval\s*\(/.test(sourceText));
 check("Application source does not use Function constructor", !/\bnew\s+Function\s*\(/.test(sourceText));
+check("Data editor runtime exposes direct cell editing", /function editActiveCell/.test(sourceText) && /workspaceEditCellButton/.test(sourceText));
+check("Smart Analytics emits a deterministic audit trail", /datasetFingerprint/.test(sourceText) && /auditTrail/.test(sourceText) && /renderVerification/.test(sourceText));
 check("Legacy data-lab-engine reference is absent", !/data-lab-engine\.js/.test(appHtml + sourceText));
 const analyticsDirectory = path.join(APP, "src", "analytics");
 const requiredAnalyticsModules = [
-    "rules/analytics-rules.js", "analytics-core.js", "schema-profiler.js", "semantic-role-engine.js", "data-quality-engine.js",
+    "rules/analytics-rules.js", "analytics-core.js", "schema-profiler.js", "semantic-role-engine.js", "workbook-intelligence-engine.js", "domain-classifier.js", "domain-analysis-engine.js", "data-quality-engine.js",
     "outlier-engine.js", "trend-engine.js", "period-comparison-engine.js", "correlation-engine.js",
     "pivot-recommender.js", "chart-recommender.js", "insight-engine.js", "report-generator.js",
     "analytics-orchestrator.js", "analytics.worker.js", "duckdb-engine.js", "smart-analytics-engine.js"
@@ -92,6 +98,11 @@ check("Workspace schema version is consistent", storageSchema === serializerSche
 const rootHtml = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
 check("Root entry redirects to the application", /apps\/materials\/index\.html/.test(rootHtml));
 check("Windows launcher has a PowerShell fallback with WASM MIME support", fs.existsSync(path.join(ROOT, "start-server.ps1")) && /application\/wasm/.test(fs.readFileSync(path.join(ROOT, "start-server.ps1"), "utf8")));
+check("Workbook Data Model documentation is bundled", fs.existsSync(path.join(ROOT, "WORKBOOK_DATA_MODEL.md")));
+const exampleWorkbook = path.join(ROOT, "examples", "Przyklad_Model_Danych.xlsx");
+check("Workbook Data Model example workbook is bundled", fs.existsSync(exampleWorkbook) && fs.statSync(exampleWorkbook).size > 1000);
+check("Workbook model mapping is not duplicated in preparation step", /id=["']singleSheetMappingPanel["']/.test(appHtml) && /id=["']workbookModelMappingSummary["']/.test(appHtml) && /setMappingMode\(options\.mode/.test(sourceText));
+check("Workbook model performs quality validation automatically", /validateMappedData\(\{ force: true \}\)/.test(sourceText));
 
 const passed = checks.filter(Boolean).length;
 console.log(`\n${passed}/${checks.length} checks passed.`);

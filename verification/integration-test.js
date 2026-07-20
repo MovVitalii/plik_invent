@@ -256,14 +256,14 @@ async function main() {
     checkTrue("Stock notice becomes visible", window.document.getElementById("decisionStockNotice").hidden === false);
     check("KPI stock falls back to dash", window.document.getElementById("kpiStock").textContent, "—");
     check("KPI risk falls back to dash", window.document.getElementById("kpiRisk").textContent, "—");
-    checkTrue("Coverage table shows the graceful notice row instead of data", window.document.getElementById("coverageTableBody").textContent.includes("Aktualny stan zapasu"));
+    checkTrue("Coverage table shows the graceful notice row instead of data", window.document.getElementById("coverageTableBody").textContent.includes("arkusz zapasów"));
     checkTrue("Forecast table shows the graceful notice row instead of data", window.document.getElementById("forecastTableBody").textContent.includes("Aktualny stan zapasu"));
     check("ABC table still has 3 rows (Pareto/ABC don't need stock)", window.document.getElementById("abcTableBody").children.length, 3);
 
     // ---- Smart Analytics: real UI + deterministic local pipeline ----
     console.log("\n--- Smart Analytics UI ---");
-    const smartUseDuckDb = window.document.getElementById("smartAnalyticsUseDuckDb");
-    smartUseDuckDb.checked = false;
+    const smartSqlMode = window.document.getElementById("smartAnalyticsSqlMode");
+    smartSqlMode.value = "javascript";
     window.document.getElementById("smartAnalyticsModeSelect").value = "quick";
     await PMA.smartAnalyticsEngine.run();
     const smartResult = PMA.smartAnalyticsEngine.getResult();
@@ -273,6 +273,7 @@ async function main() {
     checkTrue("Smart Analytics profile table is rendered", window.document.getElementById("smartSchemaTableBody").children.length > 0);
     checkTrue("Smart Analytics quality findings are rendered", window.document.getElementById("smartQualityIssuesBody").children.length > 0);
     checkTrue("Smart Analytics report is rendered", window.document.getElementById("smartReportContent").textContent.toLowerCase().includes("podsumowanie zarządcze"));
+    checkTrue("Smart Analytics verification audit is rendered", window.document.getElementById("smartVerificationBody").children.length > 0 && Boolean(smartResult?.auditTrail?.dataset?.fingerprint));
     check("Smart Analytics progress reaches 100", Number(window.document.getElementById("smartAnalyticsProgressBar").value), 100);
 
     // A result based on filtered rows must be invalidated when filters change.

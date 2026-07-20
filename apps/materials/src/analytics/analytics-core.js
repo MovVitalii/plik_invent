@@ -19,6 +19,8 @@
     function normalizeLabel(value) {
         return cleanText(value)
             .toLocaleLowerCase("pl-PL")
+            .replace(/ł/g, "l")
+            .replace(/đ/g, "d")
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "")
             .replace(/[^a-z0-9%]+/g, " ")
@@ -59,8 +61,88 @@
         return null;
     }
 
-    function parseDate(value) {
-        if (value instanceof Date && !Number.isNaN(value.getTime())) return new Date(value.getTime());
+    function isDateObject(value) {
+        return value !== null
+            && typeof value === "object"
+            && Object.prototype.toString.call(value) === "[object Date]"
+            && typeof value.getTime === "function"
+            && !Number.isNaN(value.getTime());
+    }
+
+    function inferDateConvention(values = []) {
+        let dmyEvidence = 0;
+        let mdyEvidence = 0;
+        let yearFirstEvidence = 0;
+        let inspected = 0;
+        values.forEach((value) => {
+            if (isBlank(value) || isDateObject(value) || typeof value === "number") return;
+            const text = String(value).trim();
+            if (/^\d{4}[.\/-]\d{1,2}[.\/-]\d{1,2}/.test(text)) {
+                yearFirstEvidence += 1;
+                inspected += 1;
+                return;
+            }
+            const match = text.match(/^(\d{1,2})([.\/-])(\d{1,2})\2(\d{2,4})(?:\s|$)/);
+            if (!match) return;
+            const first = Number(match[1]);
+            const separator = match[2];
+            const second = Number(match[3]);
+            inspected += 1;
+            if (first > 12 && second <= 12) dmyEvidence += 3;
+            else if (second > 12 && first <= 12) mdyEvidence += 3;
+            else if (separator === ".") dmyEvidence += 0.75;
+        });
+        if (yearFirstEvidence > Math.max(dmyEvidence, mdyEvidence)) return { convention: "ymd", confidence: clamp(yearFirstEvidence / Math.max(1, inspected), 0.55, 1), evidence: "Dominują daty z rokiem na początku." };
+        if (mdyEvidence > dmyEvidence) return { convention: "mdy", confidence: clamp(mdyEvidence / Math.max(1, mdyEvidence + dmyEvidence), 0.55, 1), evidence: "Układ miesiąc/dzień/rok potwierdzają wartości z drugim członem większym od 12." };
+        if (dmyEvidence > 0) return { convention: "dmy", confidence: clamp(dmyEvidence / Math.max(1, mdyEvidence + dmyEvidence), 0.55, 1), evidence: "Układ dzień/miesiąc/rok potwierdzają wartości lub separator kropkowy." };
+        return { convention: "dmy", confidence: inspected ? 0.5 : 0.35, evidence: inspected ? "Daty są niejednoznaczne; zastosowano lokalny układ dzień/miesiąc/rok." : "Brak tekstowych wartości pozwalających ustalić kolejność dnia i miesiąca." };
+    }
+
+
+    function parsePeriodToken(value, options = {}) {
+        if (isBlank(value) || isDateObject(value) || typeof value === "number") return null;
+        const text = cleanText(value);
+        const weekMatch = text.match(/^(?:week|wk|cw|tydz(?:ien)?|tyg(?:odzien)?)\s*[-: ]?\s*(\d{1,2})(?:\s*[-\/]?\s*(\d{4}))?$/i);
+        if (weekMatch) {
+            const week = Number(weekMatch[1]);
+            if (week < 1 || week > 53) return null;
+            const year = Number(weekMatch[2] || options.referenceYear || options.year || 0) || null;
+            return { type: "iso_week", week, year, label: `W${String(week).padStart(2, "0")}${year ? ` ${year}` : ""}` };
+        }
+        const monthMatch = text.match(/^(?:month|miesiac|miesiąc)\s*[-: ]?\s*(\d{1,2})(?:\s*[-\/]?\s*(\d{4}))?$/i);
+        if (monthMatch) {
+            const month = Number(monthMatch[1]);
+            if (month < 1 || month > 12) return null;
+            const year = Number(monthMatch[2] || options.referenceYear || options.year || 0) || null;
+            return { type: "month", month, year, label: `${String(month).padStart(2, "0")}${year ? `/${year}` : ""}` };
+        }
+        return null;
+    }
+
+    function isoWeekStart(year, week) {
+        if (!Number.isInteger(year) || !Number.isInteger(week) || week < 1 || week > 53) return null;
+        const jan4 = new Date(year, 0, 4);
+        const day = jan4.getDay() || 7;
+        const monday = new Date(year, 0, 4 - day + 1 + (week - 1) * 7);
+        return Number.isNaN(monday.getTime()) ? null : monday;
+    }
+
+    function resolvePeriodToken(value, options = {}) {
+        const token = parsePeriodToken(value, options);
+        if (!token) return null;
+        if (token.type === "iso_week" && token.year) return isoWeekStart(token.year, token.week);
+        if (token.type === "month" && token.year) return new Date(token.year, token.month - 1, 1);
+        return null;
+    }
+
+    function parseDate(value, options = {}) {
+        const optionObject = typeof options === "string" ? { convention: options } : (options || {});
+        const convention = optionObject.convention || "auto";
+        if (optionObject.resolvePeriods === true) {
+            const resolvedPeriod = resolvePeriodToken(value, optionObject);
+            if (resolvedPeriod) return resolvedPeriod;
+        }
+        if (isDateObject(value)) return new Date(value.getTime());
         if (typeof value === "number" && Number.isFinite(value)) {
             if (value > 20000 && value < 100000) {
                 const date = new Date(Date.UTC(1899, 11, 30) + value * DAY_MS);
@@ -91,10 +173,23 @@
             const parsed = new Date(text);
             return Number.isNaN(parsed.getTime()) ? null : parsed;
         }
-        const dmy = text.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
-        if (dmy) {
-            const year = Number(dmy[3]) < 100 ? 2000 + Number(dmy[3]) : Number(dmy[3]);
-            return validParts(year, Number(dmy[2]), Number(dmy[1]), Number(dmy[4] || 0), Number(dmy[5] || 0), Number(dmy[6] || 0));
+        const separated = text.match(/^(\d{1,2})([.\/-])(\d{1,2})\2(\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+        if (separated) {
+            const first = Number(separated[1]);
+            const separator = separated[2];
+            const second = Number(separated[3]);
+            const year = Number(separated[4]) < 100 ? 2000 + Number(separated[4]) : Number(separated[4]);
+            const hour = Number(separated[5] || 0);
+            const minute = Number(separated[6] || 0);
+            const secondPart = Number(separated[7] || 0);
+            let effectiveConvention = convention;
+            if (effectiveConvention === "auto") {
+                if (first > 12 && second <= 12) effectiveConvention = "dmy";
+                else if (second > 12 && first <= 12) effectiveConvention = "mdy";
+                else effectiveConvention = separator === "." ? "dmy" : "dmy";
+            }
+            if (effectiveConvention === "mdy") return validParts(year, first, second, hour, minute, secondPart);
+            return validParts(year, second, first, hour, minute, secondPart);
         }
         if (/^[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4}/.test(text)) {
             const date = new Date(text);
@@ -103,11 +198,12 @@
         return null;
     }
 
-    function toISODate(value) {
-        const date = parseDate(value);
+    function toISODate(value, options = {}) {
+        const date = parseDate(value, options);
         if (!date) return null;
         return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
     }
+
 
     function clamp(value, minimum = 0, maximum = 1) {
         return Math.max(minimum, Math.min(maximum, Number(value) || 0));
@@ -218,6 +314,24 @@
         return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
     }
 
+    function datasetFingerprint(rows = [], fields = []) {
+        const ids = (fields || []).filter((field) => field && field.id && field.source !== "internal").map((field) => field.id);
+        const effectiveIds = ids.length ? ids : [...new Set((rows || []).flatMap((row) => Object.keys(row || {}).filter((key) => !key.startsWith("__"))))].sort();
+        let hash = 0x811c9dc5;
+        const update = (text) => {
+            const value = String(text ?? "");
+            for (let index = 0; index < value.length; index += 1) {
+                hash ^= value.charCodeAt(index);
+                hash = Math.imul(hash, 0x01000193) >>> 0;
+            }
+            hash ^= 31;
+            hash = Math.imul(hash, 0x01000193) >>> 0;
+        };
+        effectiveIds.forEach(update);
+        (rows || []).forEach((row) => effectiveIds.forEach((id) => update(stableStringify(row?.[id] ?? null))));
+        return `fnv1a32-${hash.toString(16).padStart(8, "0")}`;
+    }
+
     function rank(values) {
         const indexed = values.map((value, index) => ({ value, index })).sort((a, b) => a.value - b.value);
         const ranks = new Array(values.length);
@@ -289,8 +403,8 @@
         };
     }
 
-    function periodKey(dateValue, granularity = "month") {
-        const date = parseDate(dateValue);
+    function periodKey(dateValue, granularity = "month", dateOptions = {}) {
+        const date = parseDate(dateValue, dateOptions);
         if (!date) return null;
         const year = date.getFullYear();
         const month = date.getMonth() + 1;
@@ -308,9 +422,9 @@
         return `${year}-${String(month).padStart(2, "0")}`;
     }
 
-    function chooseGranularity(minDateValue, maxDateValue) {
-        const minimum = parseDate(minDateValue);
-        const maximum = parseDate(maxDateValue);
+    function chooseGranularity(minDateValue, maxDateValue, dateOptions = {}) {
+        const minimum = parseDate(minDateValue, dateOptions);
+        const maximum = parseDate(maxDateValue, dateOptions);
         if (!minimum || !maximum) return "month";
         const days = Math.max(1, Math.round((maximum - minimum) / DAY_MS));
         if (days <= 62) return "day";
@@ -319,8 +433,8 @@
         return "quarter";
     }
 
-    function dateRange(values) {
-        const dates = values.map(parseDate).filter(Boolean).sort((a, b) => a - b);
+    function dateRange(values, dateOptions = {}) {
+        const dates = values.map((value) => parseDate(value, dateOptions)).filter(Boolean).sort((a, b) => a - b);
         return dates.length ? { minimum: dates[0], maximum: dates[dates.length - 1], days: Math.max(1, Math.round((dates[dates.length - 1] - dates[0]) / DAY_MS) + 1) } : null;
     }
 
@@ -389,16 +503,25 @@
     }
 
     function inferFieldList(rows, fields = []) {
-        const byId = new Map((fields || [])
-            .filter((field) => field && field.id && field.source !== "internal" && !String(field.id).startsWith("__"))
-            .map((field) => [field.id, { ...field }]));
+        const explicitFields = (fields || [])
+            .filter((field) => field && field.id && field.source !== "internal" && !String(field.id).startsWith("__"));
+
+        // An explicit field catalogue is authoritative. The workspace can contain
+        // technical keys (row id, validation metadata, cached date parts) that are
+        // intentionally absent from Smart Analytics. Re-inferring those keys from
+        // row objects would leak implementation details into profiles and reports.
+        if (explicitFields.length) {
+            return [...new Map(explicitFields.map((field) => [field.id, { ...field }])).values()];
+        }
+
+        const byId = new Map();
         sampleRows(rows, 200).forEach((row) => {
             Object.keys(row || {}).forEach((key) => {
                 if (key.startsWith("__")) return;
                 if (!byId.has(key)) byId.set(key, { id: key, label: key, type: null, source: "inferred" });
             });
         });
-        return [...byId.values()].filter((field) => field.id && field.source !== "internal" && !String(field.id).startsWith("__"));
+        return [...byId.values()];
     }
 
     function confidenceFromEvidence(score, sampleSize, minimumSample = 20) {
@@ -413,6 +536,11 @@
         normalizeLabel,
         parseNumber,
         parseBoolean,
+        isDateObject,
+        inferDateConvention,
+        parsePeriodToken,
+        resolvePeriodToken,
+        isoWeekStart,
         parseDate,
         toISODate,
         clamp,
@@ -429,6 +557,7 @@
         sampleRows,
         groupBy,
         stableStringify,
+        datasetFingerprint,
         rank,
         pearson,
         spearman,

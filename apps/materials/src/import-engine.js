@@ -42,7 +42,9 @@
         bind(elements.reanalyzeSheetButton, "click", handleReanalyze);
         bind(elements.continueToMappingButton, "click", handleContinue);
         bind(document.getElementById("headerRowNumber"), "change", handleReanalyze);
+        bind(document.getElementById("detectHeaderRowButton"), "click", handleDetectHeaderRow);
         bind(document.getElementById("combineSheetsButton"), "click", combineAllSheets);
+        bind(document.getElementById("selectRecommendedSheetButton"), "click", handleSelectRecommendedSheet);
         initialized = true;
         return api;
     }
@@ -108,11 +110,13 @@
                 await yieldToBrowser();
             }
             state.setWorkbook(combined, combined.SheetNames, sheetProvenance);
+            const workbookIntelligence = analyzeWorkbookStructure(combined);
+            PMA.workbookModelEngine?.prepareFromWorkbook?.({ force: true });
             dom.setImportMode(true);
             dom.updateWorkbookMetadata({ name: `${list.length} połączone pliki`, size: list.reduce((sum, file) => sum + file.size, 0), sheetCount: combined.SheetNames.length, rowCount: 0, columnCount: 0 });
             dom.populateSheetSelector(combined.SheetNames, combined.SheetNames[0]);
             document.getElementById("combineSheetsButton")?.removeAttribute("disabled");
-            await selectAndAnalyzeSheet(combined.SheetNames[0], { token });
+            await selectAndAnalyzeSheet(workbookIntelligence?.recommendedSheet || combined.SheetNames[0], { token, autoDetectHeader: true });
             state.clearBusy(STATUS.SUCCESS);
             dom.showSuccess(`Wczytano ${list.length} plików i ${sheetCounter} arkuszy. Możesz wybrać arkusz albo użyć „Połącz arkusze”.`, "Import wielu plików");
             return combined;
@@ -155,6 +159,8 @@
             validateWorkbook(workbook);
             const sheetProvenance = Object.fromEntries(workbook.SheetNames.map((name) => [name, { fileName: file.name, sheetName: name }]));
             state.setWorkbook(workbook, workbook.SheetNames, sheetProvenance);
+            const workbookIntelligence = analyzeWorkbookStructure(workbook);
+            PMA.workbookModelEngine?.prepareFromWorkbook?.({ force: true });
 
             dom.setImportMode(true);
             dom.updateWorkbookMetadata({
@@ -170,7 +176,7 @@
             if (combineButton) combineButton.disabled = workbook.SheetNames.length < 2;
 
             state.updateBusy({ message: "Analizowanie pierwszego arkusza...", progress: 50 });
-            await selectAndAnalyzeSheet(workbook.SheetNames[0], { token });
+            await selectAndAnalyzeSheet(workbookIntelligence?.recommendedSheet || workbook.SheetNames[0], { token, autoDetectHeader: true });
             ensureToken(token);
 
             state.clearBusy(STATUS.SUCCESS);
@@ -199,7 +205,7 @@
         const sheetName = cleanText(event.target.value);
         if (!sheetName) return;
         try {
-            await selectAndAnalyzeSheet(sheetName);
+            await selectAndAnalyzeSheet(sheetName, { autoDetectHeader: true });
             state.clearBusy(STATUS.SUCCESS);
         } catch (error) {
             handleError(error, "Analiza arkusza");
@@ -239,15 +245,21 @@
         currentRawRows = rawRows;
         if (!rawRows.length) throw new Error(`Arkusz „${sheetName}” jest pusty.`);
 
-        state.updateBusy({ message: "Odczytywanie nazw kolumn z pierwszego wiersza...", progress: 68 });
+        state.updateBusy({ message: "Wykrywanie wiersza nagłówków i zakresu danych...", progress: 68 });
         await yieldToBrowser();
-        const configuredHeaderRow = Math.max(1, Number(document.getElementById("headerRowNumber")?.value || 1));
-        const headerRowIndex = configuredHeaderRow - 1;
+        const headerInput = document.getElementById("headerRowNumber");
+        const useAutomaticHeader = options.autoDetectHeader === true || !headerInput?.dataset.userSelected;
+        const configuredHeaderRow = Math.max(1, Number(headerInput?.value || 1));
+        const headerRowIndex = useAutomaticHeader ? detectHeaderRow(rawRows) : configuredHeaderRow - 1;
         if (headerRowIndex >= rawRows.length || !rowHasValues(rawRows[headerRowIndex])) {
-            throw new Error(`Wiersz nagłówków ${configuredHeaderRow} nie zawiera nazw kolumn.`);
+            throw new Error(`Wiersz nagłówków ${headerRowIndex + 1} nie zawiera nazw kolumn.`);
+        }
+        if (headerInput) {
+            headerInput.value = String(headerRowIndex + 1);
+            if (useAutomaticHeader) delete headerInput.dataset.userSelected;
         }
 
-        const analysis = buildSheetAnalysis(rawRows, headerRowIndex);
+        const analysis = buildSheetAnalysis(rawRows, headerRowIndex, range);
         if (!analysis.headers.length) throw new Error("Nie wykryto kolumn danych.");
         if (!analysis.dataRows.length) throw new Error("Arkusz nie zawiera danych poniżej nagłówków.");
         const provenanceMap = state.get("import.sheetProvenance", {}) || {};
@@ -295,7 +307,14 @@
             emptyRowCount: analysis.emptyRowCount
         });
 
-        state.updateBusy({ message: "Arkusz gotowy do mapowania.", progress: 92 });
+        // Edytor i Smart Analytics są dostępne od razu po imporcie, nawet bez mapowania
+        // schematu materiałowego. Mapowanie może później zastąpić ten ogólny arkusz
+        // normalizowanym zbiorem analitycznym.
+        if (PMA.spreadsheetEngine?.prepareRawWorkspace) {
+            await PMA.spreadsheetEngine.prepareRawWorkspace({ activate: false, silent: true });
+        }
+
+        state.updateBusy({ message: "Arkusz gotowy do mapowania i edycji.", progress: 92 });
         dom.setStatusBadge(elements.importStatusBadge, "Arkusz gotowy", STATUS.SUCCESS);
         dom.setWorkflowProgress("import", `${formatInteger(analysis.dataRows.length, "0")} wierszy danych`);
         dom.setDisabled(elements.continueToMappingButton, false);
@@ -343,38 +362,99 @@
     }
 
 
-    function buildSheetAnalysis(rawRows, headerRowIndex) {
-        const headerRow = rawRows[headerRowIndex] || [];
-        let lastColumn = -1;
-        for (let rowIndex = headerRowIndex; rowIndex < rawRows.length; rowIndex += 1) {
-            const row = rawRows[rowIndex];
-            if (!row) continue;
-            for (let index = row.length - 1; index >= 0; index -= 1) {
-                if (!isBlank(row[index])) {
-                    if (index > lastColumn) lastColumn = index;
-                    break;
-                }
+    function detectHeaderRow(rawRows, options = {}) {
+        const maximumCandidates = Math.min(rawRows.length, Math.max(1, Number(options.maximumCandidates) || 25));
+        let bestIndex = 0;
+        let bestScore = -Infinity;
+        const headerTerms = /\b(article|artykul|material|product|brand|marka|qty|quantity|ilosc|amount|data|date|order|ord|supplier|dostawc|category|kategor|status|numer|number|paleta|pallet|wz|transport|recipient)\b/i;
+        const totalTerms = /\b(suma|sum of|grand total|suma koncowa|razem|total)\b/i;
+
+        for (let rowIndex = 0; rowIndex < maximumCandidates; rowIndex += 1) {
+            const row = Array.isArray(rawRows[rowIndex]) ? rawRows[rowIndex] : [];
+            const nonBlankCells = row.map((value, index) => ({ value, index })).filter((item) => !isBlank(item.value));
+            if (nonBlankCells.length < 2) continue;
+            const normalized = nonBlankCells.map((item) => cleanText(item.value));
+            const textCount = nonBlankCells.filter((item) => typeof item.value === "string" && cleanText(item.value)).length;
+            const uniqueCount = new Set(normalized.map((value) => value.toLocaleLowerCase("pl-PL"))).size;
+            const keywordCount = normalized.filter((value) => headerTerms.test(value)).length;
+            const totalCount = normalized.filter((value) => totalTerms.test(value)).length;
+            const candidateColumns = nonBlankCells.map((item) => item.index);
+            const following = rawRows.slice(rowIndex + 1, Math.min(rawRows.length, rowIndex + 6));
+            let followingFilled = 0;
+            let followingCells = 0;
+            let followingNumericOrDate = 0;
+            following.forEach((nextRow) => {
+                candidateColumns.forEach((columnIndex) => {
+                    const value = nextRow?.[columnIndex];
+                    followingCells += 1;
+                    if (!isBlank(value)) {
+                        followingFilled += 1;
+                        if (typeof value === "number" || value instanceof Date || /^\s*[-+]?\d[\d\s.,]*\s*$/.test(String(value))) followingNumericOrDate += 1;
+                    }
+                });
+            });
+            const textRatio = textCount / nonBlankCells.length;
+            const uniqueRatio = uniqueCount / nonBlankCells.length;
+            const followingDensity = followingCells ? followingFilled / followingCells : 0;
+            const typeContrast = followingFilled ? followingNumericOrDate / followingFilled : 0;
+            const widthBonus = Math.min(12, nonBlankCells.length) * 0.8;
+            const score = widthBonus
+                + textRatio * 5
+                + uniqueRatio * 3
+                + keywordCount * 1.8
+                + followingDensity * 4
+                + typeContrast * 2.5
+                - totalCount * 4
+                - rowIndex * 0.08;
+            if (score > bestScore) {
+                bestScore = score;
+                bestIndex = rowIndex;
             }
         }
-        const columnCount = Math.min(lastColumn + 1, IMPORT_LIMITS.maximumColumns);
-        if (columnCount <= 0) return { headers: [], sourceHeaders: [], dataRows: [], sourceRowNumbers: [], emptyRowCount: 0 };
-        const sourceHeaders = headerRow.slice(0, columnCount).map(cleanText);
+        return bestIndex;
+    }
+
+    function determineEffectiveColumns(rawRows, headerRowIndex) {
+        const maximumWidth = Math.max(0, ...rawRows.map((row) => Array.isArray(row) ? row.length : 0));
+        const dataRowCount = Math.max(1, rawRows.length - headerRowIndex - 1);
+        const headerRow = rawRows[headerRowIndex] || [];
+        const indexes = [];
+        for (let columnIndex = 0; columnIndex < maximumWidth; columnIndex += 1) {
+            const headerPresent = !isBlank(headerRow[columnIndex]);
+            let nonBlankCount = 0;
+            for (let rowIndex = headerRowIndex + 1; rowIndex < rawRows.length; rowIndex += 1) {
+                if (!isBlank(rawRows[rowIndex]?.[columnIndex])) nonBlankCount += 1;
+            }
+            const density = nonBlankCount / dataRowCount;
+            const meaningfulUnnamedColumn = nonBlankCount >= 2 || density >= 0.1;
+            if (headerPresent || meaningfulUnnamedColumn) indexes.push(columnIndex);
+        }
+        return indexes.slice(0, IMPORT_LIMITS.maximumColumns);
+    }
+
+    function buildSheetAnalysis(rawRows, headerRowIndex, range = null) {
+        const headerRow = rawRows[headerRowIndex] || [];
+        const columnIndexes = determineEffectiveColumns(rawRows, headerRowIndex);
+        if (!columnIndexes.length) return { headers: [], sourceHeaders: [], dataRows: [], sourceRowNumbers: [], emptyRowCount: 0, columnIndexes: [] };
+        const sourceHeaders = columnIndexes.map((columnIndex) => cleanText(headerRow[columnIndex]));
         const headers = createUniqueHeaders(sourceHeaders);
         const dataRows = [];
         const sourceRowNumbers = [];
         let emptyRowCount = 0;
+        const sourceStartRow = Number(range?.startRow) || 0;
         for (let rowIndex = headerRowIndex + 1; rowIndex < rawRows.length; rowIndex += 1) {
-            const row = Array.isArray(rawRows[rowIndex]) ? rawRows[rowIndex].slice(0, columnCount) : [];
-            while (row.length < columnCount) row.push("");
+            const sourceRow = Array.isArray(rawRows[rowIndex]) ? rawRows[rowIndex] : [];
+            const row = columnIndexes.map((columnIndex) => sourceRow[columnIndex] ?? "");
             if (!rowHasValues(row)) {
                 emptyRowCount += 1;
                 continue;
             }
             dataRows.push(row);
-            sourceRowNumbers.push(rowIndex + 1);
+            sourceRowNumbers.push(sourceStartRow + rowIndex + 1);
         }
-        return { headers, sourceHeaders, dataRows, sourceRowNumbers, emptyRowCount };
+        return { headers, sourceHeaders, dataRows, sourceRowNumbers, emptyRowCount, columnIndexes };
     }
+
 
 
     async function combineAllSheets() {
@@ -392,7 +472,7 @@
             if (!range.rowCount) continue;
             validateRange(range, sheetName);
             const rawRows = worksheetToRows(worksheet, range);
-            const analysis = buildSheetAnalysis(rawRows, headerRowIndex);
+            const analysis = buildSheetAnalysis(rawRows, headerRowIndex, range);
             if (!analysis.headers.length || !analysis.dataRows.length) continue;
             if (!canonicalHeaders) canonicalHeaders = analysis.headers;
             if (canonicalHeaders.length !== analysis.headers.length || canonicalHeaders.some((header, index) => header !== analysis.headers[index])) {
@@ -415,12 +495,76 @@
         if (!workbook.SheetNames.includes("Połączone dane")) workbook.SheetNames.push("Połączone dane");
         const nextProvenance = { ...sheetProvenance, "Połączone dane": { fileName: "Wiele źródeł", sheetName: "Połączone dane", rows: combinedProvenance } };
         state.setWorkbook(workbook, workbook.SheetNames, nextProvenance);
+        PMA.workbookModelEngine?.prepareFromWorkbook?.({ force: true });
         dom.populateSheetSelector(workbook.SheetNames, "Połączone dane");
         await selectAndAnalyzeSheet("Połączone dane");
         state.clearBusy(STATUS.SUCCESS);
         dom.showSuccess(`Połączono ${sourceNames.length} arkuszy: ${formatInteger(combinedRows.length)} wierszy. Zachowano źródłowy plik, arkusz i numer wiersza.`, "Łączenie arkuszy");
     }
 
+
+    function analyzeWorkbookStructure(workbook) {
+        try {
+            const result = PMA.workbookIntelligenceEngine?.analyzeWorkbook?.(workbook, api, { maximumRowsPerSheet: 3000 }) || null;
+            state.setWorkbookIntelligence?.(result);
+            renderWorkbookIntelligence(result);
+            return result;
+        } catch (error) {
+            console.warn("[PMA] Nie udało się przeanalizować struktury skoroszytu:", error);
+            renderWorkbookIntelligence(null);
+            return null;
+        }
+    }
+
+    function renderWorkbookIntelligence(result) {
+        const panel = document.getElementById("workbookIntelligencePanel");
+        const body = document.getElementById("workbookIntelligenceBody");
+        const summary = document.getElementById("workbookIntelligenceSummary");
+        const relations = document.getElementById("workbookRelationsSummary");
+        const button = document.getElementById("selectRecommendedSheetButton");
+        if (!panel || !body || !summary || !relations || !button) return;
+        if (!result?.sheets?.length) {
+            panel.hidden = true;
+            body.replaceChildren();
+            return;
+        }
+        panel.hidden = false;
+        summary.textContent = result.recommendedSheet
+            ? `Rekomendowany arkusz: „${result.recommendedSheet}”. ${result.recommendedReason}`
+            : "Nie udało się jednoznacznie wskazać głównej tabeli.";
+        button.disabled = !result.recommendedSheet;
+        body.replaceChildren(...result.sheets.map((sheet) => {
+            const tr = document.createElement("tr");
+            if (sheet.name === result.recommendedSheet) tr.classList.add("is-recommended");
+            if (sheet.warnings?.length || sheet.duplicateOf) tr.classList.add("is-warning");
+            const values = [
+                sheet.name + (sheet.name === result.recommendedSheet ? " — rekomendowany" : ""),
+                sheet.typeLabel || sheet.type,
+                formatInteger(sheet.rowCount || 0),
+                formatInteger(sheet.columnCount || 0),
+                sheet.headerRow ? `wiersz ${sheet.headerRow}` : "—",
+                (sheet.warnings || []).join(" ") || "—"
+            ];
+            values.forEach((value) => { const td = document.createElement("td"); td.textContent = String(value); tr.appendChild(td); });
+            tr.addEventListener("dblclick", () => selectAndAnalyzeSheet(sheet.name, { autoDetectHeader: true }).catch((error) => handleError(error, "Wybór arkusza")));
+            return tr;
+        }));
+        relations.textContent = result.relations?.length
+            ? `Wykryto ${result.relations.length} wiarygodnych relacji. ${result.relations.slice(0, 3).map((item) => `${item.leftSheet} ↔ ${item.rightSheet}: ${item.commonValues} wspólnych wartości, pokrycie ${Math.round((item.coverage || 0) * 100)}%`).join("; ")}.`
+            : "Nie wykryto wiarygodnych kluczy łączenia między arkuszami.";
+    }
+
+    async function handleSelectRecommendedSheet() {
+        const result = state.get("import.workbookIntelligence");
+        if (!result?.recommendedSheet) return;
+        try {
+            await selectAndAnalyzeSheet(result.recommendedSheet, { autoDetectHeader: true });
+            state.clearBusy(STATUS.SUCCESS);
+            dom.showSuccess(`Otworzono rekomendowany arkusz „${result.recommendedSheet}”.`, "Rozpoznanie skoroszytu");
+        } catch (error) {
+            handleError(error, "Wybór rekomendowanego arkusza");
+        }
+    }
 
     function renderAnalysis(result) {
         const fileMeta = state.get("import.fileMeta", {});
@@ -446,9 +590,23 @@
     }
 
 
+    async function handleDetectHeaderRow() {
+        try {
+            const input = document.getElementById("headerRowNumber");
+            if (input) delete input.dataset.userSelected;
+            await analyzeSelectedSheet({ autoDetectHeader: true });
+            state.clearBusy(STATUS.SUCCESS);
+            dom.showSuccess(`Wykryto wiersz nagłówków: ${input?.value || 1}.`, "Wykrywanie nagłówków");
+        } catch (error) {
+            handleError(error, "Wykrywanie nagłówków");
+        }
+    }
+
     async function handleReanalyze() {
         try {
-            await analyzeSelectedSheet();
+            const input = document.getElementById("headerRowNumber");
+            if (input) input.dataset.userSelected = "true";
+            await analyzeSelectedSheet({ autoDetectHeader: false });
             state.clearBusy(STATUS.SUCCESS);
             dom.showSuccess("Arkusz został ponownie przeanalizowany.", "Analiza arkusza");
         } catch (error) {
@@ -501,7 +659,11 @@
         analyzeSelectedSheet,
         analyzeSheet,
         selectAndAnalyzeSheet,
+        detectHeaderRow,
+        determineEffectiveColumns,
         buildSheetAnalysis,
+        analyzeWorkbookStructure,
+        renderWorkbookIntelligence,
         inspectWorksheetRange,
         worksheetToRows,
         getCurrentRawRows: () => currentRawRows,

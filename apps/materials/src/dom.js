@@ -32,11 +32,12 @@
         "workbookRowCount", "workbookColumnCount", "sheetSelector",
         "reanalyzeSheetButton", "previewDescription", "previewRowCount",
         "previewTable", "previewTableHead", "previewTableBody", "continueToMappingButton",
-        "mappingSection", "mappingStatusBadge", "mappingLockedState", "mappingContent",
+        "mappingSection", "mappingHeading", "mappingDescription", "mappingStatusBadge", "mappingLockedState", "mappingContent",
+        "workbookModelMappingSummary", "workbookModelMappingSummaryText", "singleSheetMappingPanel",
         "autoMapButton", "sourceColumnsCount", "sourceColumnsList", "mappingFieldsContainer",
         "validateMappingButton", "validationTotalRows", "validationValidRows",
         "validationInvalidRows", "validationDuplicateRows", "validationMessages",
-        "backToImportButton", "processDataButton", "analysisSection", "analysisStatusBadge",
+        "backToImportButton", "openRawWorkspaceButton", "processDataButton", "analysisSection", "analysisStatusBadge",
         "analysisLockedState", "analysisContent", "clearFiltersButton", "dateFromFilter",
         "dateToFilter", "dynamicFiltersContainer", "fieldSearchInput", "availableFieldsContainer",
         "rowsDropZone", "columnsDropZone", "aggregationSelector", "valuesDropZone",
@@ -54,7 +55,7 @@
         "dataLabSection", "dataLabStatusBadge", "dataLabLockedState", "dataLabContent",
         "smartAnalyticsSection", "smartAnalyticsStatusBadge", "smartAnalyticsLockedState", "smartAnalyticsContent",
         "smartAnalyticsScopeSelect", "smartAnalyticsModeSelect", "smartPrimaryDateSelect",
-        "smartPrimaryMeasureSelect", "smartPrimaryDimensionSelect", "smartAnalyticsUseDuckDb",
+        "smartPrimaryMeasureSelect", "smartPrimaryDimensionSelect", "smartAnalyticsSqlMode",
         "runSmartAnalyticsButton", "cancelSmartAnalyticsButton", "smartAnalyticsEngineStatus",
         "smartAnalyticsProgressBar", "smartAnalyticsGeneratedAt", "smartRows", "smartColumns",
         "smartQualityScore", "smartInsightsCount", "smartExecutiveSummary", "smartInsightsContainer",
@@ -62,7 +63,8 @@
         "smartTrendChart", "smartPeriodComparisonBody", "smartOutliersBody", "smartCorrelationChart",
         "smartCorrelationsBody", "smartPivotCards", "smartChartRecommendationButtons",
         "smartRecommendedChart", "smartPivotPreview", "smartReportContent", "smartExportXlsxButton",
-        "smartExportJsonButton", "smartPrintReportButton"
+        "smartExportJsonButton", "smartExportAuditButton", "smartPrintReportButton",
+        "smartVerificationSummary", "smartVerificationBody"
     ];
 
     const elements = {};
@@ -274,6 +276,37 @@
         if (normalized === "warning") elements.analysisTip.classList.add("is-warning");
         if (normalized === "danger") elements.analysisTip.classList.add("is-error");
         elements.analysisTip.textContent = String(message ?? "");
+    }
+
+
+    function setMappingMode(mode = "single-sheet", details = {}) {
+        const workbookModelMode = mode === "workbook-model";
+        elements.singleSheetMappingPanel.hidden = workbookModelMode;
+        elements.workbookModelMappingSummary.hidden = !workbookModelMode;
+        elements.openRawWorkspaceButton.hidden = workbookModelMode;
+
+        elements.mappingHeading.textContent = "2. Przygotowanie i jakość danych";
+        elements.mappingDescription.textContent = workbookModelMode
+            ? "Mapowanie wykonano w modelu skoroszytu. Sprawdź jakość wspólnej tabeli zużycia przed uruchomieniem analiz."
+            : "Połącz kolumny wybranego arkusza z polami systemowymi i sprawdź poprawność danych.";
+        elements.validateMappingButton.textContent = workbookModelMode ? "Sprawdź dane modelu" : "Sprawdź dane";
+        elements.backToImportButton.textContent = workbookModelMode ? "Edytuj model danych" : "Wróć do importu";
+        elements.processDataButton.textContent = workbookModelMode ? "Przetwórz model danych" : "Przetwórz do analizy materiałów";
+
+        if (workbookModelMode) {
+            const parts = [];
+            if (Number.isFinite(details.usageSheets)) parts.push(`arkusze zużycia: ${details.usageSheets}`);
+            if (Number.isFinite(details.stockSheets)) parts.push(`arkusze zapasów: ${details.stockSheets}`);
+            if (details.joinField) parts.push(`klucz: ${details.joinField}`);
+            elements.workbookModelMappingSummaryText.textContent = [
+                "Role i kolumny zostały przypisane w sekcji „Model danych skoroszytu”.",
+                parts.length ? `Użyty model: ${parts.join(", ")}.` : "",
+                "Poniżej pozostaje wyłącznie kontrola jakości przed przetworzeniem."
+            ].filter(Boolean).join(" ");
+        } else {
+            elements.workbookModelMappingSummaryText.textContent =
+                "Role i kolumny zostały przypisane w sekcji „Model danych skoroszytu”. Poniżej pozostaje wyłącznie kontrola jakości przed przetworzeniem.";
+        }
     }
 
     function setWorkflowStage(stage) {
@@ -833,6 +866,7 @@
         setDisabled(elements.smartExportXlsxButton, true);
         setDisabled(elements.smartExportJsonButton, true);
         setDisabled(elements.smartPrintReportButton, true);
+        setMappingMode("single-sheet");
         setWorkflowStage(1);
         closeExportMenu();
         closeHelpPopover();
@@ -867,6 +901,7 @@
         setAnalysisTip,
         setWorkflowStage,
         setWorkflowProgress,
+        setMappingMode,
         unlockSection,
         lockSection,
         activateSection,

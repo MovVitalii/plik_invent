@@ -8,7 +8,7 @@
 
     const PMA = global.PMA || (global.PMA = {});
     const REQUIRED_MODULES = [
-        "constants", "state", "utils", "dom", "importEngine", "mappingEngine",
+        "constants", "state", "utils", "dom", "importEngine", "mappingEngine", "workbookModelEngine",
         "valueNormalizationEngine", "normalizationEngine", "pivotEngine", "decisionEngine", "chartEngine", "exportEngine",
         "spreadsheetEngine", "smartAnalyticsEngine", "duckdbEngine"
     ];
@@ -61,6 +61,7 @@
         [
             PMA.importEngine,
             PMA.mappingEngine,
+            PMA.workbookModelEngine,
             PMA.valueNormalizationEngine,
             PMA.normalizationEngine,
             PMA.chartEngine,

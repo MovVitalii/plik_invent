@@ -11,11 +11,11 @@
         return PMA.analyticsRules?.aggregationByRole?.[role] || "sum";
     }
 
-    function aggregateSeries(rows, dateField, measureField, granularity, aggregation = "sum") {
+    function aggregateSeries(rows, dateField, measureField, granularity, aggregation = "sum", dateConvention = "dmy") {
         const buckets = new Map();
         rows.forEach((row) => {
-            const date = core.parseDate(row?.[dateField]);
-            const key = core.periodKey(date, granularity);
+            const date = core.parseDate(row?.[dateField], { convention: dateConvention });
+            const key = core.periodKey(date, granularity, { convention: dateConvention });
             const value = core.parseNumber(row?.[measureField]);
             if (!date || !key || !Number.isFinite(value)) return;
             const current = buckets.get(key) || { period: key, value: 0, records: 0, sum: 0, latestTimestamp: -Infinity };
@@ -45,9 +45,10 @@
             || profiles.find((profile) => profile.id === descriptive?.primaryDateField)
             || profiles.filter((profile) => profile.semanticRole === "date").sort((a, b) => b.nonNullCount - a.nonNullCount)[0];
         if (!dateProfile) return { dateField: null, granularity: null, trends: [], reason: "Nie wykryto kolumny daty." };
-        const range = core.dateRange(rows.map((row) => row?.[dateProfile.id]));
+        const dateConvention = dateProfile.dateConvention || "dmy";
+        const range = core.dateRange(rows.map((row) => row?.[dateProfile.id]), { convention: dateConvention });
         if (!range) return { dateField: dateProfile.id, granularity: null, trends: [], reason: "Brak poprawnych dat." };
-        const granularity = options.granularity || core.chooseGranularity(range.minimum, range.maximum);
+        const granularity = options.granularity || core.chooseGranularity(range.minimum, range.maximum, { convention: dateConvention });
         const measureProfiles = profiles
             .filter((profile) => profile.analyticalRole === "measure" && profile.semanticRole !== "identifier" && profile.numeric?.count >= 3)
             .sort((a, b) => b.numeric.count - a.numeric.count)
@@ -55,7 +56,7 @@
 
         const trends = measureProfiles.map((profile) => {
             const aggregation = aggregationForRole(profile.semanticRole);
-            const series = aggregateSeries(rows, dateProfile.id, profile.id, granularity, aggregation);
+            const series = aggregateSeries(rows, dateProfile.id, profile.id, granularity, aggregation, dateConvention);
             if (series.length < 2) return null;
             const regression = core.linearRegression(series.map((item, index) => ({ x: index, y: item.value })));
             const first = series[0].value;
@@ -98,6 +99,7 @@
         return {
             dateField: dateProfile.id,
             dateLabel: dateProfile.label,
+            dateConvention,
             dateRange: { minimum: core.toISODate(range.minimum), maximum: core.toISODate(range.maximum), days: range.days },
             granularity,
             trends

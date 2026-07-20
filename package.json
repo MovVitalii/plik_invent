@@ -1,6 +1,6 @@
 {
   "name": "materials-analytics",
-  "version": "1.5.0",
+  "version": "1.7.1",
   "private": true,
   "description": "Local Excel-like workspace with deterministic Smart Analytics, materials planning and offline DuckDB-WASM.",
   "scripts": {

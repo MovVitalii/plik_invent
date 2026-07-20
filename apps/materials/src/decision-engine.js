@@ -142,6 +142,9 @@
     }
 
     function materialIdentity(recordOrLabel) {
+        if (typeof recordOrLabel !== "string" && PMA.workbookModelEngine?.getMaterialIdentity) {
+            return PMA.workbookModelEngine.getMaterialIdentity(recordOrLabel);
+        }
         const label = typeof recordOrLabel === "string" ? recordOrLabel : materialLabel(recordOrLabel);
         return normalizeComparableText(label) || normalizeComparableText(UNKNOWN_MATERIAL);
     }
@@ -196,6 +199,10 @@
     }
 
     function getLatestStockByMaterial(rows) {
+        if (state.get("import.dataModel.enabled", false) && PMA.workbookModelEngine?.getInventoryRows) {
+            const modeled = PMA.workbookModelEngine.getInventoryRows(rows);
+            if (modeled.length || state.get("dataset.stockRows.length", 0)) return modeled;
+        }
         const latest = new Map();
         const allowedKeys = new Set(rows.map(materialIdentity));
         const dedicatedStockRows = state.get("dataset.stockRows", []);
@@ -298,7 +305,15 @@
                 reliable,
                 dataIssue,
                 averageDaily,
-                coverageDays: reliable && averageDaily > 0 ? entry.stock / averageDaily : null
+                coverageDays: reliable && averageDaily > 0 ? Math.max(0, entry.stock) / averageDaily : null,
+                stockMode: entry.stockMode || "snapshot",
+                stockDate: entry.stockDate || null,
+                asOfDate: entry.asOfDate || null,
+                originalStock: entry.originalStock,
+                usageSince: entry.usageSince || 0,
+                receiptsSince: entry.receiptsSince || 0,
+                sourceSheet: entry.sourceSheet || null,
+                sourceRow: entry.sourceRow || null
             };
         }).sort((left, right) => {
             const leftDays = left.coverageDays ?? Infinity;
@@ -442,9 +457,30 @@
 
     function renderStockNotice() {
         const mapped = hasStockMapping();
-        elements.decisionStockNotice.hidden = mapped;
+        const modelAudit = state.get("dataset.modelJoinAudit", null);
+        const modelEnabled = state.get("import.dataModel.enabled", false);
+        elements.decisionStockNotice.hidden = mapped && !modelEnabled;
+        elements.decisionStockNotice.replaceChildren();
+        if (modelEnabled && modelAudit) {
+            const text = document.createElement("span");
+            text.textContent = `Model skoroszytu łączy dane kluczem „${modelAudit.resolvedJoinField || "material"}”. Dopasowano ${modelAudit.matchedMaterials || 0} z ${modelAudit.usageMaterials || 0} materiałów; bez zapasu: ${(modelAudit.unmatchedUsage || []).length}; niezgodne jednostki: ${(modelAudit.unitMismatches || []).length}.`;
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "button button-secondary button-small";
+            button.textContent = "Sprawdź dane zapasów";
+            button.addEventListener("click", () => PMA.spreadsheetEngine?.openStockEditor?.());
+            elements.decisionStockNotice.append(text, button);
+            return;
+        }
         if (!mapped) {
-            dom.setText(elements.decisionStockNotice, "Pareto i ABC działają na polu „Zużycie / ilość wykorzystana”. Aby zobaczyć pokrycie zapasu, ryzyko braków i prognozę zamówień, zmapuj pole \"Aktualny stan zapasu\" w kroku 2 (Mapowanie).");
+            const text = document.createElement("span");
+            text.textContent = "Pareto i ABC działają bez danych zapasu. Aby policzyć pokrycie, ryzyko i zamówienia, zmapuj kolumnę zapasu, wczytaj osobny plik albo wpisz dane ręcznie.";
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "button button-secondary button-small";
+            button.textContent = "Wprowadź dane ręcznie";
+            button.addEventListener("click", () => PMA.spreadsheetEngine?.openStockEditor?.());
+            elements.decisionStockNotice.append(text, button);
         }
     }
 
@@ -526,12 +562,12 @@
     function renderCoverage(rows) {
         dom.clear(elements.coverageTableBody);
         if (!hasStockMapping()) {
-            renderEmptyRow(elements.coverageTableBody, 9, "Zmapuj pole \"Aktualny stan zapasu\", aby zobaczyć pokrycie i ryzyko.");
+            renderEmptyRow(elements.coverageTableBody, 11, "Dodaj arkusz zapasów w modelu skoroszytu, zmapuj stan zapasu albo wprowadź dane ręcznie.");
             return;
         }
         const coverage = getCoverageRows(rows).slice(0, RENDER_ROW_LIMIT);
         if (!coverage.length) {
-            renderEmptyRow(elements.coverageTableBody, 9, UI_TEXT.noData);
+            renderEmptyRow(elements.coverageTableBody, 11, UI_TEXT.noData);
             return;
         }
         coverage.forEach((item) => {
@@ -546,6 +582,8 @@
                 dom.createElement("td", { text: formatInteger(item.calendarDays) }),
                 dom.createElement("td", { text: formatPercent(item.density * 100, { valueIsPercentage: true, maximumFractionDigits: 1 }) }),
                 dom.createElement("td", { text: item.coverageDays === null ? "—" : formatNumber(item.coverageDays, { maximumFractionDigits: 1 }) }),
+                dom.createElement("td", { text: `${item.stockMode === "opening" ? "Początkowy → wyliczony" : "Snapshot"}${item.stockDate ? ` · ${item.stockDate}` : ""}` }),
+                dom.createElement("td", { text: item.sourceSheet ? `${item.sourceSheet}${item.sourceRow ? ` · wiersz ${item.sourceRow}` : ""}` : "Dane ręczne / aktywny arkusz" }),
                 dom.createElement("td", { children: [createBadge(meta.text, meta.status)] }),
                 dom.createElement("td", { children: item.dataIssue ? [createBadge("Sprawdź jednostki", "danger")] : atRisk ? [createBadge("Ryzyko braku", "danger")] : [createBadge("OK", "success")] })
             );

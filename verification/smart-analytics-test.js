@@ -11,6 +11,8 @@ const scripts = [
     "analytics-core.js",
     "schema-profiler.js",
     "semantic-role-engine.js",
+    "domain-classifier.js",
+    "domain-analysis-engine.js",
     "descriptive-statistics.js",
     "data-quality-engine.js",
     "outlier-engine.js",
@@ -163,6 +165,14 @@ const fields = [
     check("Structured Polish report is generated", result.report.sections.length >= 8 && result.report.plainText.includes("PODSUMOWANIE ZARZĄDCZE") && result.report.plainText.includes("Metodyka"));
     check("Methodology records analysis mode, samples and rule version", result.methodology.profileMode === "full" && result.methodology.profiledRows === result.datasetProfile.profiledRows && result.methodology.ruleVersion === context.PMA.analyticsRules.version);
     check("Execution metadata starts with deterministic local JavaScript engines", result.execution.statisticalEngine === "javascript" && result.execution.sqlEngine === "javascript" && result.execution.rulesVersion === context.PMA.analyticsRules.version);
+    const repeat = await context.PMA.analyticsOrchestrator.analyze({ rows: fixture(), fields, options: { fullStatistics: true, profileSampleSize: 10000, sampleSize: 5000, maximumFindings: 100 } });
+    const changedRows = fixture();
+    changedRows[0] = { ...changedRows[0], quantity: Number(changedRows[0].quantity) + 1 };
+    const changedFingerprint = context.PMA.analyticsCore.datasetFingerprint(changedRows, fields);
+    check("Audit trail contains an engine and data fingerprint", result.auditTrail?.engineVersion === "1.7.1" && /^fnv1a32-[0-9a-f]{8}$/.test(result.auditTrail?.dataset?.fingerprint || ""));
+    check("Dataset fingerprint is reproducible for identical data", repeat.auditTrail?.dataset?.fingerprint === result.auditTrail?.dataset?.fingerprint);
+    check("Dataset fingerprint changes when an analytical value changes", changedFingerprint !== result.auditTrail?.dataset?.fingerprint);
+    check("Audit trail exposes methods and verification checks", result.auditTrail?.modules?.length >= 8 && result.auditTrail?.checks?.every((item) => item.passed));
     check("Pipeline progress reaches 100%", progress.at(-1) === 100, progress.at(-1));
     check("No external AI service is declared", result.execution.externalServices === false && result.execution.deterministic === true);
 

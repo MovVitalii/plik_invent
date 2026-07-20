@@ -1,5 +1,110 @@
 # Changelog
 
+## 1.7.1 — jednoznaczny proces mapowania
+
+- usunięto powtórne mapowanie po zbudowaniu wieloarkuszowego modelu danych;
+- mapowanie ról i kolumn odbywa się wyłącznie w panelu „Model danych skoroszytu”;
+- etap 2 zmieniono na „Przygotowanie i jakość danych”;
+- dla modelu skoroszytu etap 2 pokazuje tylko podsumowanie modelu i kontrolę jakości;
+- po zbudowaniu modelu kontrola jakości uruchamia się automatycznie;
+- tryb pojedynczego arkusza zachowuje dotychczasowe mapowanie;
+- przycisk pojedynczego arkusza opisano jednoznacznie jako „Przygotuj tylko wybrany arkusz”.
+
+## 1.7.0 — wieloarkuszowy Workbook Data Model
+
+### Import i role arkuszy
+
+- Usunięto ograniczenie jednego arkusza dla obliczeń decyzyjnych.
+- Dodano role: Zużycie, Zapasy, Przyjęcia, Otwarte zamówienia, Kartoteka materiałów i Ignoruj.
+- Każdy arkusz ma niezależny wiersz nagłówków i niezależne mapowanie.
+- Można przypisać kilka arkuszy do tej samej roli.
+- Dodano automatyczne wykrywanie ról i automatyczne mapowanie.
+
+### Łączenie danych
+
+- Dodano deterministyczny join po kodzie materiału, SKU lub znormalizowanej nazwie.
+- Tryb automatyczny wybiera klucz o najwyższym pokryciu.
+- Dodano mapę aliasów, dzięki której wpis tylko z nazwą może dopasować się do transakcji z kodem lub SKU, jeżeli relacja jest jednoznaczna.
+- Tożsamość materiału może być określona przez kod, SKU albo nazwę; nazwa nie jest bezwzględnie wymagana w każdym arkuszu.
+- Niejednoznaczne aliasy są wykrywane i nie są używane do automatycznego łączenia.
+- Dodano audyt dopasowań, braków, ujemnych stanów, snapshotów powtórzonych tego samego dnia i niezgodności jednostek.
+- Zachowano provenance plik/arkusz/wiersz po materializacji wspólnej tabeli zużycia.
+- Niezmapowane kolumny źródłowe z arkuszy zużycia pozostają dostępne w Edytorze danych i eksporcie.
+
+### Zapasy i obliczenia
+
+- Dodano semantykę `snapshot` i `opening`.
+- Stan początkowy uwzględnia przyjęcia i zużycie od daty stanu włącznie.
+- Snapshot nie jest pomniejszany o historyczne zużycie.
+- Historyczna data analizy nie używa snapshotu z przyszłości.
+- Kartoteka i otwarte zamówienia uzupełniają jednostkę, dostawcę, lead time, MOQ, krotność, safety stock i ilość w drodze.
+- Ręczny formularz obsługuje kod, SKU oraz wybór snapshot/stan początkowy.
+- Dodano przykład wieloarkuszowego skoroszytu w `examples/Przyklad_Model_Danych.xlsx`.
+
+### Workspace i eksport
+
+- Workspace podniesiono do schematu v5.
+- Zapisywane są role, mapowania, audyt i wszystkie tabele pomocnicze.
+- Eksport XLSX może zawierać osobne arkusze Przyjęcia, Otwarte zamówienia i Kartoteka materiałów.
+
+### Testy
+
+- Dodano dedykowaną regresję Workbook Data Model: 22/22.
+- Pełny pakiet przechodzi 299/299 kontroli.
+
+## 1.6.0 — rozpoznanie skoroszytu i analityka dostaw NCG
+
+### Dane decyzyjne i Edytor danych
+
+- Dodano ręczne wprowadzanie i edycję aktualnego stanu, daty snapshotu, jednostki, lead time, MOQ, krotności, safety stock, otwartych zamówień i dostawcy.
+- Komunikat o braku zapasu prowadzi bezpośrednio do formularza ręcznego.
+- Edytor danych jest przygotowywany automatycznie natychmiast po analizie arkusza, bez dodatkowego przycisku i bez obowiązkowego mapowania materiałowego.
+- Dodano jawny przycisk „Edytuj komórkę” oraz obsługę Enter, F2, dwukliku i rozpoczęcia pisania w aktywnej komórce.
+- Naprawiono zachowanie niepoprawnego tekstu w kolumnie liczbowej: wartość nie jest już cicho zamieniana na pustą.
+
+### DuckDB i weryfikacja Smart Analytics
+
+- Zastąpiono niejasny checkbox DuckDB wyborem: automatycznie, zawsze DuckDB lub tylko JavaScript.
+- Tryb automatyczny wybiera DuckDB dla zbiorów od 5000 wierszy albo wielowymiarowych Pivot Table i zachowuje bezpieczny fallback JavaScript.
+- Dodano odcisk analizowanego zbioru `FNV-1a`, bilans wierszy/kolumn, jawne metody, parametry, ograniczenia i kontrole spójności.
+- Dodano zakładkę „Weryfikacja”, eksport audytu JSON oraz arkusze „Weryfikacja” i „Kontrole” w eksporcie Smart Analytics XLSX.
+- Rozszerzono testy o rzeczywistą edycję komórki, ręczne dane decyzyjne, automatyczne odblokowanie edytora i odtwarzalność odcisku danych.
+
+### Import i struktura skoroszytu
+
+- Dodano automatyczne wykrywanie rzeczywistego wiersza nagłówków także po wierszach tytułowych.
+- Dodano wykrywanie efektywnego zakresu kolumn i ignorowanie pustych „ghost columns” zapisanych w zakresie Excela.
+- Dodano panel „Rozpoznanie skoroszytu”, który klasyfikuje wszystkie arkusze przed wyborem tabeli roboczej.
+- Dodano rekomendację głównego arkusza oraz automatyczne otwarcie najlepszego źródła.
+- Dodano klasyfikację arkuszy: ewidencja dostaw, plan zakupów, zdarzenia rozładunku, plan hierarchiczny, podsumowanie, archiwum i arkusz pomocniczy.
+- Dodano wykrywanie podobnych lub archiwalnych kopii, aby nie sumować ich z aktualnym arkuszem bez weryfikacji.
+- Dodano wykrywanie relacji między arkuszami na podstawie numerów zamówień i kodów produktów, wraz z pokryciem kluczy.
+
+### Daty i semantyka biznesowa
+
+- Dodano bezpieczne rozpoznawanie konwencji MDY i DMY na poziomie kolumny.
+- Dodano obsługę dat Excela, ISO, dat tekstowych oraz okresów planistycznych typu `week 35`, `CW 35` i numer miesiąca.
+- Okresy tygodniowe bez konkretnego dnia są zachowywane jako niepełne daty, a nie odrzucane jako błąd typu.
+- Rozszerzono role biznesowe o ilość zamówioną, dostarczoną i pozostałą, palety zamówione/dostarczone/pozostałe, numery zamówień, dokumenty WZ, kody produktów, dostawcę, kategorię planistyczną, język i kod lokalizacji.
+- Powtarzalny numer zamówienia nie jest już automatycznie uznawany za błędny duplikat identyfikatora.
+
+### Analityka domenowa
+
+- Dodano klasyfikator domeny danych i osobny deterministyczny moduł analizy realizacji dostaw.
+- Dla ewidencji dostaw obliczane są zamówione, dostarczone i pozostałe ilości/palety, stopień realizacji, pozycje niepełne, nadrealizacje, braki dokumentów WZ i równanie spójności.
+- Dla planu zakupów obliczane są planowane ilości, liczba zamówień, produktów i dostawców oraz lead time między transportem i dostawą.
+- Dla planów hierarchicznych puste nazwy materiału są uzupełniane wyłącznie w kopii analitycznej, a wiersze `SUMA/RAZEM/TOTAL` są wykluczane przed agregacją.
+- Dla harmonogramów dostaw wyłączono generyczne interpretowanie rozkładu dat jako trendu popytu.
+- Naprawiono rozpoznawanie reguł zakotwiczonych, np. `QTY`, gdy wewnętrzny identyfikator kolumny ma postać `source__7`.
+- Smart Analytics pomija pola wewnętrzne oraz puste pola pochodne w ogólnym arkuszu, dzięki czemu raport nie zawiera technicznego szumu.
+- Raport i eksport XLSX otrzymały osobną sekcję „Analiza biznesowa”.
+
+### Testy regresyjne
+
+- Dodano stały test reprezentatywnego, wieloarkuszowego skoroszytu NCG.
+- Test obejmuje import, rekomendację arkusza, archiwalne kopie, puste kolumny, relacje plan–wykonanie, MDY/DMY, tygodnie planistyczne, role ilościowe, duplikaty zamówień, subtotal rows i Fill Down.
+- `datasetProfile` raportuje teraz jawnie `originalRows`, `analyzedRows` i `excludedRows`.
+
 ## 1.5.0 — lokalny Smart Analytics Engine
 
 ### Architektura

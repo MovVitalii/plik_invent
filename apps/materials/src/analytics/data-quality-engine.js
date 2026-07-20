@@ -61,6 +61,16 @@
                 ));
             }
 
+            if (profile.physicalType === "date" && profile.date?.partialCount > 0) {
+                issues.push(issue(
+                    `partial-date-${profile.id}`,
+                    "medium",
+                    `Niepełne daty w kolumnie „${profile.label}”`,
+                    `${profile.date.partialCount} wartości wskazuje okres (np. tydzień), ale nie zawiera dokładnego dnia. Są zachowane jako poprawne informacje planistyczne, lecz nie mogą być użyte jako dokładna data bez roku i dnia.`,
+                    { type: "partial_dates", fieldId: profile.id, count: profile.date.partialCount, examples: profile.date.partialExamples || [] }
+                ));
+            }
+
             const expected = profile.physicalType;
             if (["number", "date", "boolean"].includes(expected)) {
                 const invalid = [];
@@ -69,7 +79,7 @@
                     const value = row?.[profile.id];
                     if (core.isBlank(value)) return;
                     const valid = expected === "number" ? core.parseNumber(value) !== null
-                        : expected === "date" ? Boolean(core.parseDate(value))
+                        : expected === "date" ? Boolean(core.parseDate(value, { convention: profile.dateConvention || "dmy" }) || core.parsePeriodToken(value))
                             : core.parseBoolean(value) !== null;
                     if (!valid) {
                         invalidCount += 1;
@@ -117,7 +127,7 @@
             ));
         }
 
-        const identifierFields = profiles.filter((profile) => profile.semanticRole === "identifier" && profile.uniqueRatio < 1 && profile.nonNullCount > 0);
+        const identifierFields = profiles.filter((profile) => profile.semanticRole === "identifier" && profile.expectedUnique === true && profile.uniqueRatio < 1 && profile.nonNullCount > 0);
         const businessKeyDuplicates = identifierFields.map((profile) => {
             const counts = core.frequency(sourceRows.map((row) => row?.[profile.id]), Infinity).filter((entry) => entry.count > 1);
             return { fieldId: profile.id, label: profile.label, duplicateValues: counts.slice(0, maximumExamples), duplicateValueCount: counts.length };

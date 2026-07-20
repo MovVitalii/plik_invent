@@ -76,6 +76,7 @@
         validationToken += 1;
         lastValidationSignature = "";
         state.clearValidationResult();
+        dom.setMappingMode(options.mode || "single-sheet", options.modeDetails || {});
         dom.unlockSection("mapping");
         dom.setDisabled(elements.autoMapButton, false);
         dom.setDisabled(elements.validateMappingButton, false);

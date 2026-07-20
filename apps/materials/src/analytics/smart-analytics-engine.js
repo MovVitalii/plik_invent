@@ -40,6 +40,7 @@
         bindId("smartTrendSelector", "change", (event) => { activeTrendField = event.target.value; renderTrendChart(); });
         bindId("smartExportXlsxButton", "click", exportXlsx);
         bindId("smartExportJsonButton", "click", exportJson);
+        bindId("smartExportAuditButton", "click", exportAudit);
         bindId("smartPrintReportButton", "click", printReport);
         all("[data-smart-tab]").forEach((button) => bind(button, "click", () => switchTab(button.dataset.smartTab)));
         bind(el("smartPivotCards"), "click", handlePivotCardClick);
@@ -90,8 +91,17 @@
         }
     }
 
+    function analysisFields(rows = getSourceRows()) {
+        const sourceRows = Array.isArray(rows) ? rows : [];
+        return state.get("dataset.fields", []).filter((field) => {
+            if (!field || field.source === "internal") return false;
+            if (field.source !== "derived") return true;
+            return sourceRows.some((row) => !PMA.analyticsCore.isBlank(row?.[field.id]));
+        });
+    }
+
     function populateOverrideSelectors() {
-        const fields = state.get("dataset.fields", []).filter((field) => field && field.source !== "internal");
+        const fields = analysisFields();
         const current = {
             date: el("smartPrimaryDateSelect")?.value || "",
             measure: el("smartPrimaryMeasureSelect")?.value || "",
@@ -144,14 +154,45 @@
             maximumPivotRows: 100,
             dateField: el("smartPrimaryDateSelect").value || null,
             primaryMeasureField: el("smartPrimaryMeasureSelect").value || null,
-            primaryDimensionField: el("smartPrimaryDimensionSelect").value || null
+            primaryDimensionField: el("smartPrimaryDimensionSelect").value || null,
+            sqlMode: el("smartAnalyticsSqlMode")?.value || "auto"
         };
+    }
+
+    function chooseSqlEngine(requestedMode, rows, pivots) {
+        const requested = ["auto", "duckdb", "javascript"].includes(requestedMode) ? requestedMode : "auto";
+        const rowCount = Array.isArray(rows) ? rows.length : 0;
+        const complexPivot = (pivots || []).some((pivot) => (pivot.rows?.length || 0) + (pivot.columns?.length || 0) > 1 || (pivot.values?.length || 0) > 1);
+        if (requested === "duckdb") return { requested, useDuckDb: true, reason: "Użytkownik wymusił lokalny DuckDB-WASM." };
+        if (requested === "javascript") return { requested, useDuckDb: false, reason: "Użytkownik wybrał wyłącznie JavaScript." };
+        if (rowCount >= 5000) return { requested, useDuckDb: true, reason: `Tryb automatyczny: ${rowCount} wierszy przekracza próg 5000.` };
+        if (complexPivot) return { requested, useDuckDb: true, reason: "Tryb automatyczny: wykryto wielowymiarową tabelę przestawną." };
+        return { requested, useDuckDb: false, reason: `Tryb automatyczny: ${rowCount} wierszy i proste zestawienia są sprawniej liczone w JavaScript.` };
+    }
+
+    function synchronizeAuditExecution(result) {
+        if (!result?.auditTrail) return;
+        result.auditTrail.execution = {
+            statisticalEngine: result.execution.statisticalEngine,
+            sqlEngine: result.execution.sqlEngine,
+            sqlModeRequested: result.execution.sqlModeRequested || "auto",
+            sqlSelectionReason: result.execution.sqlSelectionReason || "—",
+            duckdbError: result.execution.duckdbError || null
+        };
+        result.auditTrail.configuration.sqlModeRequested = result.execution.sqlModeRequested || result.auditTrail.configuration.sqlModeRequested;
+        const module = result.auditTrail.modules?.find((item) => item.id === "pivots");
+        if (module) {
+            module.method = result.execution.sqlEngine === "duckdb-wasm"
+                ? "deterministyczne reguły rekomendacji + lokalny SQL DuckDB-WASM"
+                : "deterministyczne reguły rekomendacji + agregacja JavaScript";
+            module.parameters = `${module.parameters}; wykonanie: ${result.execution.sqlEngine}; decyzja: ${result.execution.sqlSelectionReason || "—"}`;
+        }
     }
 
     async function run() {
         if (activeRequestId) return;
         const rows = getSourceRows();
-        const fields = state.get("dataset.fields", []);
+        const fields = analysisFields(rows);
         if (!rows.length) {
             dom.showError("Brak danych do analizy.", "Smart Analytics");
             return;
@@ -182,12 +223,17 @@
             }
             if (activeRequestId !== requestId) return;
 
-            if (el("smartAnalyticsUseDuckDb").checked && result.pivots?.length) {
+            const sqlDecision = chooseSqlEngine(options.sqlMode, rows, result.pivots || []);
+            result.execution.sqlModeRequested = sqlDecision.requested;
+            result.execution.sqlSelectionReason = sqlDecision.reason;
+            if (sqlDecision.useDuckDb && result.pivots?.length) {
                 updateProgress({ progress: 99, stage: "duckdb", message: "Materializacja tabel przestawnych w lokalnym DuckDB-WASM…" });
                 try {
                     result.pivots = await PMA.duckdbEngine.materializePivots(rows, result.pivots, { maximumPivotRows: 100 });
                     result.execution.sqlEngine = "duckdb-wasm";
                     result.recommendedCharts = PMA.chartRecommender.recommend({
+                        domain: result.domain,
+                        domainAnalysis: result.domainAnalysis,
                         schema: result.schema,
                         descriptive: result.descriptive,
                         quality: result.quality,
@@ -196,12 +242,16 @@
                         periodComparisons: result.periodComparisons,
                         correlations: result.correlations,
                         pivots: result.pivots
-                    });
+                    }, options);
                 } catch (error) {
                     result.execution.sqlEngine = "javascript-fallback";
                     result.execution.duckdbError = String(error?.message || error);
+                    result.execution.sqlSelectionReason += " DuckDB nie uruchomił się, więc zachowano wynik JavaScript.";
                 }
+            } else {
+                result.execution.sqlEngine = "javascript";
             }
+            synchronizeAuditExecution(result);
 
             state.setSmartAnalyticsResult(result);
             renderResult(result);
@@ -255,7 +305,7 @@
     function setRunning(running) {
         el("runSmartAnalyticsButton").disabled = running || state.get("dataset.normalizedRows.length", 0) === 0;
         el("cancelSmartAnalyticsButton").hidden = !running;
-        ["smartAnalyticsScopeSelect", "smartAnalyticsModeSelect", "smartPrimaryDateSelect", "smartPrimaryMeasureSelect", "smartPrimaryDimensionSelect", "smartAnalyticsUseDuckDb"].forEach((id) => { el(id).disabled = running; });
+        ["smartAnalyticsScopeSelect", "smartAnalyticsModeSelect", "smartPrimaryDateSelect", "smartPrimaryMeasureSelect", "smartPrimaryDimensionSelect", "smartAnalyticsSqlMode"].forEach((id) => { if (el(id)) el(id).disabled = running; });
         if (running) dom.setStatusBadge("smartAnalyticsStatusBadge", "Analiza…", "processing");
     }
 
@@ -275,9 +325,10 @@
         el("smartColumns").textContent = "0";
         el("smartQualityScore").textContent = "—";
         el("smartInsightsCount").textContent = "0";
-        ["smartExecutiveSummary", "smartInsightsContainer", "smartSchemaTableBody", "smartQualityIssuesBody", "smartPeriodComparisonBody", "smartOutliersBody", "smartCorrelationsBody", "smartPivotCards", "smartChartRecommendationButtons", "smartPivotPreview", "smartReportContent"].forEach((id) => el(id)?.replaceChildren());
+        ["smartExecutiveSummary", "smartInsightsContainer", "smartDomainKpis", "smartDomainWarnings", "smartSchemaTableBody", "smartQualityIssuesBody", "smartPeriodComparisonBody", "smartOutliersBody", "smartCorrelationsBody", "smartPivotCards", "smartChartRecommendationButtons", "smartPivotPreview", "smartReportContent", "smartVerificationSummary", "smartVerificationBody"].forEach((id) => el(id)?.replaceChildren());
         el("smartQualitySummary").textContent = "Uruchom analizę, aby uzyskać ocenę jakości.";
-        ["smartExportXlsxButton", "smartExportJsonButton", "smartPrintReportButton"].forEach((id) => { el(id).disabled = true; });
+        if (el("smartDomainSummary")) el("smartDomainSummary").textContent = "Typ danych nie został jeszcze rozpoznany.";
+        ["smartExportXlsxButton", "smartExportJsonButton", "smartExportAuditButton", "smartPrintReportButton"].forEach((id) => { if (el(id)) el(id).disabled = true; });
     }
 
     function renderResult(result) {
@@ -292,7 +343,7 @@
             : result.execution.statisticalEngine === "javascript-main-thread" ? "JavaScript (wątek główny)" : "JavaScript";
         const modeLabel = result.datasetProfile.analysisMode === "quick" ? "szybki" : "pełny";
         el("smartAnalyticsEngineStatus").textContent = `Tryb: ${modeLabel} · Statystyka: ${statisticsLabel} · SQL: ${result.execution.sqlEngine === "duckdb-wasm" ? "DuckDB-WASM" : "JavaScript"} · Reguły: ${result.execution.rulesVersion || "—"} · ${formatInteger(result.durationMs)} ms`;
-        ["smartExportXlsxButton", "smartExportJsonButton", "smartPrintReportButton"].forEach((id) => { el(id).disabled = false; });
+        ["smartExportXlsxButton", "smartExportJsonButton", "smartExportAuditButton", "smartPrintReportButton"].forEach((id) => { if (el(id)) el(id).disabled = false; });
         renderOverview(result);
         renderSchema(result);
         renderQuality(result);
@@ -301,6 +352,7 @@
         renderCorrelations(result);
         renderRecommendations(result);
         renderReport(result);
+        renderVerification(result);
         switchTab(activeTab);
     }
 
@@ -318,6 +370,18 @@
             return card;
         }));
         if (!result.insights.length) container.append(create("p", "Nie wykryto istotnych wniosków przy aktualnych progach."));
+        const domain = result.domain || {};
+        const domainAnalysis = result.domainAnalysis || {};
+        if (el("smartDomainSummary")) el("smartDomainSummary").textContent = `${domain.label || "Analiza ogólna"} · pewność ${formatPercent(domain.confidence)}`;
+        const kpiContainer = el("smartDomainKpis");
+        if (kpiContainer) kpiContainer.replaceChildren(...(domainAnalysis.kpis || []).map((kpi) => {
+            const article = create("article", null, "domain-kpi");
+            const value = kpi.format === "percent" ? formatPercent(kpi.value) : `${formatNumber(kpi.value)}${kpi.suffix || ""}`;
+            article.append(create("span", kpi.label), create("strong", value));
+            return article;
+        }));
+        const warnings = el("smartDomainWarnings");
+        if (warnings) warnings.replaceChildren(...(domainAnalysis.warnings || []).map((warning) => create("li", warning)));
     }
 
     function renderSchema(result) {
@@ -330,6 +394,7 @@
                 profile.label,
                 typeLabel(profile.physicalType),
                 roleLabel(profile.semanticRole),
+                businessRoleLabel(profile.businessRole),
                 formatPercent(profile.semanticConfidence),
                 `${formatInteger(profile.missingCount)} (${formatPercent(profile.missingRatio)})`,
                 `${formatInteger(profile.uniqueCount)} (${formatPercent(profile.uniqueRatio)})`,
@@ -510,6 +575,34 @@
         });
     }
 
+    function renderVerification(result) {
+        const audit = result?.auditTrail;
+        const summary = el("smartVerificationSummary");
+        const body = el("smartVerificationBody");
+        if (!summary || !body) return;
+        summary.replaceChildren();
+        body.replaceChildren();
+        if (!audit) {
+            summary.append(create("p", "Brak śladu obliczeń dla tego wyniku."));
+            return;
+        }
+        const cards = [
+            ["Identyfikator danych", audit.dataset.fingerprint],
+            ["Wiersze analizowane", `${formatInteger(audit.dataset.analyzedRows)} / ${formatInteger(audit.dataset.originalRows)}`],
+            ["Kolumny", formatInteger(audit.dataset.columns)],
+            ["Kontrole", `${audit.checks.filter((item) => item.passed).length}/${audit.checks.length}`],
+            ["Silnik SQL", audit.execution?.sqlEngine || result.execution.sqlEngine],
+            ["Wersja reguł", audit.configuration.rulesVersion]
+        ];
+        cards.forEach(([label, value]) => {
+            const article = create("article");
+            article.append(create("span", label), create("strong", value));
+            summary.append(article);
+        });
+        (audit.modules || []).forEach((module) => body.append(row([module.label, module.method, module.input, module.parameters, module.limitations])));
+        (audit.checks || []).forEach((check) => body.append(row([`Kontrola: ${check.label}`, check.passed ? "Zaliczona" : "Niezaliczona", check.evidence, "—", check.passed ? "—" : "Wymaga ręcznej kontroli"], check.passed ? "severity-row-low" : "severity-row-high")));
+    }
+
     function switchTab(name) {
         activeTab = name || "overview";
         all("[data-smart-tab]").forEach((button) => button.classList.toggle("is-active", button.dataset.smartTab === activeTab));
@@ -525,6 +618,12 @@
         download(new Blob([JSON.stringify(result, null, 2)], { type: "application/json;charset=utf-8" }), `smart-analytics-${dateStamp()}.json`);
     }
 
+    function exportAudit() {
+        const result = state.get("smartAnalytics.result");
+        if (!result?.auditTrail) return;
+        download(new Blob([JSON.stringify(result.auditTrail, null, 2)], { type: "application/json;charset=utf-8" }), `smart-analytics-audit-${dateStamp()}.json`);
+    }
+
     function exportXlsx() {
         const result = state.get("smartAnalytics.result");
         if (!result || !global.XLSX?.utils) return;
@@ -533,6 +632,8 @@
             ["Smart Analytics", "Wartość"],
             ["Wiersze", result.datasetProfile.rows],
             ["Kolumny", result.datasetProfile.columns],
+            ["Rozpoznany typ danych", result.domain?.label || "Analiza ogólna"],
+            ["Pewność klasyfikacji", result.domain?.confidence || 0],
             ["Jakość", result.quality.score],
             ["Klasa jakości", result.quality.grade],
             ["Anomalie", result.outliers.total],
@@ -544,8 +645,12 @@
             ["Wersja reguł", result.execution.rulesVersion],
             ["Wygenerowano", result.generatedAt]
         ], true);
+        appendObjects(workbook, "Analiza biznesowa", [
+            ...(result.domainAnalysis?.kpis || []).map((item) => ({ Typ: "KPI", Nazwa: item.label, Wartość: item.value, Uwagi: item.suffix || "" })),
+            ...(result.domainAnalysis?.warnings || []).map((statement) => ({ Typ: "Ostrzeżenie", Nazwa: "Kontrola", Wartość: "", Uwagi: statement }))
+        ]);
         appendObjects(workbook, "Kolumny", result.schema.profiles.map((profile) => ({
-            Kolumna: profile.label, ID: profile.id, Typ: profile.physicalType, Rola: profile.semanticRole,
+            Kolumna: profile.label, ID: profile.id, Typ: profile.physicalType, Rola: profile.semanticRole, "Rola biznesowa": profile.businessRole,
             "Pewność roli": profile.semanticConfidence, Braki: profile.missingCount, "Braki %": profile.missingRatio,
             Unikalne: profile.uniqueCount, "Unikalne %": profile.uniqueRatio, Minimum: profile.numeric?.minimum ?? profile.date?.minimum ?? "", Maximum: profile.numeric?.maximum ?? profile.date?.maximum ?? "",
             Uzasadnienie: [...(profile.typeEvidence || []), ...(profile.semanticEvidence || [])].join(" ")
@@ -556,6 +661,8 @@
         appendObjects(workbook, "Anomalie", result.outliers.findings.map((item) => ({ Ważność: item.severity, Rekord: item.rowId, Kolumna: item.label, Wartość: item.value, "Zakres od": (item.localExpectedRange || item.expectedRange || [])[0], "Zakres do": (item.localExpectedRange || item.expectedRange || [])[1], Metoda: item.method, Grupa: item.groupValue || "", Pewność: item.confidence })));
         appendObjects(workbook, "Korelacje", result.correlations.numericPairs.map((item) => ({ "Zmienna 1": item.leftLabel, "Zmienna 2": item.rightLabel, Pearson: item.pearson, Spearman: item.spearman, Próba: item.sampleSize, Pewność: item.confidence })));
         appendObjects(workbook, "Wnioski", result.insights.map((item) => ({ Ważność: item.severity, Typ: item.type, Tytuł: item.title, Wniosek: item.statement, Pewność: item.confidence, Działanie: item.recommendedAction || "" })));
+        appendObjects(workbook, "Weryfikacja", (result.auditTrail?.modules || []).map((item) => ({ Moduł: item.label, Metoda: item.method, "Dane wejściowe": item.input, "Parametry / progi": item.parameters, Ograniczenia: item.limitations })));
+        appendObjects(workbook, "Kontrole", (result.auditTrail?.checks || []).map((item) => ({ Kontrola: item.label, Wynik: item.passed ? "OK" : "BŁĄD", Dowód: item.evidence })));
         appendSheet(workbook, "Raport", result.report.plainText.split("\n").map((line) => [line]), true);
         result.pivots.slice(0, 4).forEach((pivot, index) => {
             const headers = [fieldLabelMap(result).get(pivot.rows?.[0]) || "Wiersz", ...pivot.result.columns, "Razem"];
@@ -617,6 +724,17 @@
     function severityLabel(value) { return ({ high: "Wysoka", medium: "Średnia", low: "Niska" })[value] || value || "—"; }
     function typeLabel(value) { return ({ number: "Liczba", date: "Data", boolean: "Tak/Nie", text: "Tekst", mixed: "Mieszany", empty: "Pusta" })[value] || value || "—"; }
     function roleLabel(value) { return ({ date: "Data", identifier: "Identyfikator", category: "Kategoria", measure: "Miara", quantity: "Ilość", currency: "Kwota", percentage: "Procent", stock: "Zapas", price: "Cena", cost: "Koszt", duration: "Czas", status: "Status", supplier: "Dostawca", material: "Materiał", brand: "Marka", location: "Lokalizacja", free_text: "Opis", boolean: "Tak/Nie", unknown: "Nieznana" })[value] || value || "—"; }
+    function businessRoleLabel(value) {
+        return ({
+            actual_delivery_date: "Rzeczywista data dostawy", planned_delivery_date: "Planowana data dostawy", transport_date: "Data transportu", date: "Data",
+            ordered_quantity: "Zamówiona ilość", delivered_quantity: "Dostarczona ilość", remaining_quantity: "Pozostała ilość", usage_quantity: "Zużycie", quantity: "Ilość",
+            pallet_count: "Liczba palet", delivered_pallet_count: "Rozładowane palety", remaining_pallet_count: "Pozostałe palety",
+            order_id: "Numer zamówienia", document_id: "Numer dokumentu", product_code: "Kod produktu", contract_id: "Numer kontraktu", account_id: "Numer konta", record_id: "ID rekordu", identifier: "Identyfikator",
+            supplier: "Dostawca", material_name: "Nazwa materiału", brand: "Marka", owner: "Osoba odpowiedzialna", location: "Lokalizacja", placement_code: "Kod lokalizacji",
+            pallet_type: "Typ palety", size: "Rozmiar", product_category: "Kategoria produktu", planning_category: "Kategoria planowania", language: "Język", status: "Status",
+            stock: "Zapas", unit_price: "Cena jednostkowa", cost: "Koszt", currency_value: "Wartość pieniężna", percentage: "Procent", duration: "Czas", free_text: "Opis", boolean: "Tak/Nie", category: "Kategoria", measure: "Miara", unknown: "Nieznana"
+        })[value] || value || "—";
+    }
     function chartTypeLabel(value) { return ({ line: "Liniowy", bar: "Słupkowy", "bar-horizontal": "Słupkowy poziomy", scatter: "Rozrzut", histogram: "Histogram" })[value] || value; }
 
     const api = Object.freeze({
@@ -627,6 +745,7 @@
         renderResult,
         exportXlsx,
         exportJson,
+        exportAudit,
         printReport,
         getResult: () => state.get("smartAnalytics.result", null),
         isRunning: () => Boolean(activeRequestId)

@@ -452,8 +452,8 @@
         APP: Object.freeze({
             name: "Pack Materials Analytics",
             shortName: "PMA",
-            version: "1.5.0",
-            storageSchemaVersion: 3,
+            version: "1.7.1",
+            storageSchemaVersion: 5,
             locale: "pl-PL",
             company: "",
             repositoryMode: "static"
@@ -594,8 +594,8 @@
                 message: "Wczytaj plik XLSX, XLS lub XLSB. Pierwszy wiersz wybranego arkusza musi zawierać nazwy kolumn."
             }),
             mapping: Object.freeze({
-                title: "Mapowanie kolumn",
-                message: "Przypisz kolumny źródłowe do pól systemowych. „Zużycie / ilość wykorzystana” jest wymagane. „Aktualny stan zapasu” jest opcjonalnym, osobnym polem i nie może zostać wyliczony wyłącznie na podstawie zużycia."
+                title: "Przygotowanie i jakość danych",
+                message: "W trybie pojedynczego arkusza przypisz kolumny źródłowe do pól systemowych. W trybie modelu skoroszytu mapowanie wykonuje się wcześniej przy rolach arkuszy, dlatego etap 2 pokazuje tylko podsumowanie modelu i kontrolę jakości."
             }),
             analysis: Object.freeze({
                 title: "Analiza",

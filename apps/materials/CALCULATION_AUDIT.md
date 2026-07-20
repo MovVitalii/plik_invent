@@ -1,4 +1,4 @@
-# Audyt obliczeń — Materials Analytics 1.5.0
+# Audyt obliczeń — Materials Analytics 1.7.1
 
 ## Zużycie i filtrowanie
 
@@ -69,3 +69,77 @@ Przy historii wieloletniej liczba dni kalendarzowych jest sumą osobnych zakres�
 ## Zakres modelu
 
 Szacowane zapotrzebowanie jest deterministycznym modelem planistycznym. Nie jest prognozą statystyczną i nie uwzględnia automatycznie promocji, trendu zewnętrznego, planu sprzedaży ani modeli probabilistycznych.
+
+## Realizacja dostaw
+
+Dla rozpoznanej ewidencji dostaw pola są rozdzielane na:
+
+```text
+zamówiona ilość
++ dostarczona ilość
++ pozostała ilość
++ palety zamówione / rozładowane / pozostałe
+```
+
+Podstawowy KPI:
+
+```text
+stopień realizacji = dostarczona ilość / zamówiona ilość
+```
+
+Kontrola spójności pojedynczego wiersza:
+
+```text
+zamówiona ilość = dostarczona ilość + pozostała ilość
+```
+
+Wartości opisowe, których nie da się jednoznacznie zamienić na liczbę, nie są dodawane do sum i są raportowane. Powtarzalny numer zamówienia może poprawnie występować w wielu pozycjach i nie jest automatycznie traktowany jako unikalny klucz rekordu.
+
+## Plan zakupów i lead time
+
+Dla planu zakupów:
+
+```text
+lead time = dokładna data dostawy on-site − data transportu
+```
+
+Średnia, mediana, minimum i maksimum są liczone tylko dla wierszy z dwiema dokładnymi datami. Wartości typu `week 35` są zachowywane jako okres planistyczny, ale nie są zamieniane na arbitralny dzień bez roku i dodatkowej reguły biznesowej.
+
+## Plany hierarchiczne
+
+Przed agregacją na kopii analitycznej wykonywane są dwa kontrolowane kroki:
+
+1. `Fill Down` pustej nazwy materiału w ramach kolejnych pozycji;
+2. wykluczenie wierszy `SUMA`, `RAZEM` i `TOTAL`.
+
+Dane źródłowe pozostają niezmienione. Liczba wierszy źródłowych, analizowanych i wykluczonych jest zapisana w `datasetProfile`.
+
+## Wieloarkuszowy stan efektywny — v1.7.1
+
+### Aktualny snapshot
+
+```text
+stan efektywny = stockLevel
+```
+
+Snapshot jest wybierany jako najnowszy wpis o dacie nieprzekraczającej daty analizy.
+
+### Stan początkowy
+
+```text
+stan efektywny = stockLevel
+                + suma przyjęć po dacie stanu do daty analizy
+                - suma zużycia po dacie stanu do daty analizy
+```
+
+Zakres jest otwarty z lewej i domknięty z prawej: `(data stanu, data analizy]`. Zapobiega to podwójnemu liczeniu ruchów już uwzględnionych w stanie początkowym.
+
+### Data analizy
+
+```text
+filtr Data do
+lub
+max(data zużycia, data zapasu, data przyjęcia)
+```
+
+Snapshot z datą późniejszą niż data analizy jest wykluczany.

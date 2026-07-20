@@ -101,7 +101,18 @@
                 emptyRowCount: 0,
                 sourceRowNumbers: [],
                 rowProvenance: [],
-                sheetProvenance: {}
+                sheetProvenance: {},
+                workbookIntelligence: null,
+                dataModel: {
+                    enabled: false,
+                    status: "idle",
+                    joinStrategy: "auto",
+                    resolvedJoinField: "material",
+                    generatedUsageSheet: "",
+                    roles: [],
+                    audit: null,
+                    preparedAt: null
+                }
             },
 
             mapping: {
@@ -137,6 +148,10 @@
                 duplicateRows: [],
                 stockRows: [],
                 stockFields: [],
+                receiptRows: [],
+                orderRows: [],
+                materialMasterRows: [],
+                modelJoinAudit: null,
                 calculatedColumns: [],
                 transformationSteps: [],
                 fields: [],
@@ -428,6 +443,9 @@
     function resetAfterSheetSelection() {
         destroyChart();
 
+        const preservedDataModel = store.import.dataModel && typeof store.import.dataModel === "object"
+            ? JSON.parse(JSON.stringify(store.import.dataModel))
+            : createInitialState().import.dataModel;
         store.import.rawRows = [];
         store.import.headerRowIndex = null;
         store.import.headers = [];
@@ -444,6 +462,7 @@
         store.filters = createInitialState().filters;
         store.analysis = cloneAnalysisDefaults();
         store.pivot = createInitialState().pivot;
+        store.import.dataModel = preservedDataModel;
         store.ui.fieldSearch = "";
     }
 
@@ -469,6 +488,40 @@
         store.import.sheetNames = Array.isArray(sheetNames) ? [...sheetNames] : [];
         store.import.sheetProvenance = sheetProvenance && typeof sheetProvenance === "object" ? { ...sheetProvenance } : {};
         notify(EVENTS.WORKBOOK_LOADED, { sheetNames: [...store.import.sheetNames] });
+    }
+
+    function setWorkbookIntelligence(result) {
+        store.import.workbookIntelligence = result && typeof result === "object" ? result : null;
+        notify("pma:workbook-intelligence-ready", { result: store.import.workbookIntelligence });
+        return store.import.workbookIntelligence;
+    }
+
+    function setWorkbookDataModel(model = {}) {
+        const defaults = createInitialState().import.dataModel;
+        store.import.dataModel = {
+            ...defaults,
+            ...(model && typeof model === "object" ? model : {}),
+            roles: Array.isArray(model?.roles) ? model.roles.map((item) => ({ ...item, mapping: { ...(item?.mapping || {}) } })) : [],
+            audit: model?.audit && typeof model.audit === "object" ? JSON.parse(JSON.stringify(model.audit)) : null
+        };
+        notify("pma:workbook-data-model-changed", { dataModel: JSON.parse(JSON.stringify(store.import.dataModel)) });
+        return store.import.dataModel;
+    }
+
+    function setAncillaryDatasets(payload = {}) {
+        store.dataset.receiptRows = Array.isArray(payload.receiptRows) ? payload.receiptRows : [];
+        store.dataset.orderRows = Array.isArray(payload.orderRows) ? payload.orderRows : [];
+        store.dataset.materialMasterRows = Array.isArray(payload.materialMasterRows) ? payload.materialMasterRows : [];
+        store.dataset.modelJoinAudit = payload.modelJoinAudit && typeof payload.modelJoinAudit === "object"
+            ? JSON.parse(JSON.stringify(payload.modelJoinAudit))
+            : null;
+        notify(EVENTS.DATA_NORMALIZED, {
+            normalizedRows: store.dataset.normalizedRows.length,
+            ancillaryUpdated: true,
+            receiptRows: store.dataset.receiptRows.length,
+            orderRows: store.dataset.orderRows.length,
+            materialMasterRows: store.dataset.materialMasterRows.length
+        });
     }
 
     function setSelectedSheet(sheetName) {
@@ -1285,6 +1338,9 @@
         resetAfterSheetSelection,
         setSelectedFile,
         setWorkbook,
+        setWorkbookIntelligence,
+        setWorkbookDataModel,
+        setAncillaryDatasets,
         setSelectedSheet,
         setSheetAnalysis,
         initializeMapping,

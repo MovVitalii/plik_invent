@@ -59,6 +59,7 @@
     let projectId = null;
     let projectCreatedAt = null;
     let stockImportBuffer = null;
+    let manualStockEditingId = null;
     let currentTransformPreview = null;
     let formulaPlanCache = null;
 
@@ -184,6 +185,7 @@
         bindId("openRawWorkspaceButton", "click", openRawWorkspace);
         bindId("workspaceSearchInput", "input", (event) => { searchText = normalizeComparableText(event.target.value); renderGrid({ resetScroll: true }); });
         bindId("workspaceViewMode", "change", (event) => { viewMode = event.target.value; populateFieldControls(); renderGrid({ resetScroll: true }); scheduleAutosave(); });
+        bindId("workspaceEditCellButton", "click", editActiveCell);
         bindId("workspaceUndoButton", "click", undo);
         bindId("workspaceRedoButton", "click", redo);
         bindId("workspaceAddRowButton", "click", addRow);
@@ -209,7 +211,7 @@
         bindId("workspaceGridHead", "click", handleGridHeaderClick);
     }
 
-    async function openRawWorkspace() {
+    async function prepareRawWorkspace(options = {}) {
         const headers = state.get("import.headers", []);
         const sourceRows = state.get("import.dataRows", []);
         if (!headers.length || !sourceRows.length) {
@@ -242,8 +244,13 @@
         dom.lockSection("decision", "Mapuj pola Data, Materiał i Zużycie, aby uruchomić analizę decyzyjną.");
         dom.setStatusBadge("dataLabStatusBadge", "Arkusz ogólny", STATUS.SUCCESS);
         dom.setWorkflowProgress("dataLab", `${formatInteger(nextRows.length)} wierszy`);
-        dom.activateSection("dataLab");
-        dom.showSuccess(`Otworzono ${formatInteger(nextRows.length)} wierszy bez wymuszania schematu materiałowego.`, "Ogólny arkusz danych");
+        if (options.activate !== false) dom.activateSection("dataLab");
+        if (!options.silent) dom.showSuccess(`Otworzono ${formatInteger(nextRows.length)} wierszy bez wymuszania schematu materiałowego.`, "Ogólny arkusz danych");
+        return nextRows;
+    }
+
+    async function openRawWorkspace() {
+        return prepareRawWorkspace({ activate: true, silent: false });
     }
 
     function refreshAll(options = {}) {
@@ -481,6 +488,7 @@
         if (el("workspaceColumnSelector")) el("workspaceColumnSelector").value = next.fieldId;
         syncColumnControls();
         renderGrid({ keepScroll: true });
+        updateCommandButtons();
         el("workspaceGridViewport")?.focus();
     }
 
@@ -489,12 +497,24 @@
         if (cell) startCellEdit(cell);
     }
 
+    function editActiveCell(initialValue = null) {
+        if (!activeCell) return;
+        const cell = el("workspaceGridBody")?.querySelector(`td[data-row-id="${cssEscape(activeCell.rowId)}"][data-field-id="${cssEscape(activeCell.fieldId)}"]`);
+        if (cell) startCellEdit(cell, initialValue);
+    }
+
     function handleGridKeydown(event) {
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") { event.preventDefault(); event.shiftKey ? redo() : undo(); return; }
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") { event.preventDefault(); redo(); return; }
-        if (event.key === "Enter" && activeCell) {
-            const cell = el("workspaceGridBody")?.querySelector(`td[data-row-id="${cssEscape(activeCell.rowId)}"][data-field-id="${cssEscape(activeCell.fieldId)}"]`);
-            if (cell) { event.preventDefault(); startCellEdit(cell); }
+        if ((event.key === "Enter" || event.key === "F2") && activeCell) {
+            event.preventDefault();
+            editActiveCell();
+            return;
+        }
+        if (activeCell && event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+            event.preventDefault();
+            editActiveCell(event.key);
+            return;
         }
         if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key) && activeCell) {
             event.preventDefault(); moveActiveCell(event.key, event.shiftKey);
@@ -526,7 +546,7 @@
         renderGrid({ keepScroll: true });
     }
 
-    function startCellEdit(cell) {
+    function startCellEdit(cell, initialValue = null) {
         const field = fieldById(cell.dataset.fieldId);
         if (!field || field.source === "derived" || field.source === "calculated") {
             dom.showInfo("Kolumna pochodna lub obliczeniowa jest tylko do odczytu. Zmień jej formułę albo dane źródłowe.", "Edycja komórki");
@@ -537,7 +557,7 @@
         const original = row[field.id];
         const input = document.createElement("input");
         input.className = "workspace-cell-editor";
-        input.value = rawInputValue(original, field);
+        input.value = initialValue === null ? rawInputValue(original, field) : String(initialValue);
         cell.replaceChildren(input);
         input.focus(); input.select();
         let closed = false;
@@ -589,7 +609,10 @@
 
     function normalizeEditedValue(value, field) {
         if (value === "") return null;
-        if (field.type === DATA_TYPES.NUMBER) return parseNumber(value);
+        if (field.type === DATA_TYPES.NUMBER) {
+            const parsed = parseNumber(value);
+            return parsed === null ? cleanText(value) : parsed;
+        }
         if (field.type === DATA_TYPES.DATE) {
             const date = parseDate(value, { allowExcelSerial: true, allowNumericStringExcelSerial: true });
             return date ? toISODate(date) : value;
@@ -1357,6 +1380,156 @@
             try { applyStockMapping(); } catch (error) { dom.showError(normalizeError(error).message, "Mapowanie zapasów"); }
         });
         bindId("workspaceClearStockButton", "click", clearStockDataset);
+        bindId("workspaceSaveManualStockButton", "click", () => {
+            try { addManualStockEntry(); } catch (error) { dom.showError(normalizeError(error).message, "Ręczne dane decyzyjne"); }
+        });
+        bindId("workspaceCancelManualStockButton", "click", resetManualStockForm);
+        bindId("workspaceStockBody", "click", handleStockTableAction);
+        if (el("workspaceManualStockDate") && !el("workspaceManualStockDate").value) el("workspaceManualStockDate").value = toISODate(new Date());
+    }
+
+    function stockFieldDefinitions() {
+        return [
+            { id: "material", label: "Materiał", type: DATA_TYPES.TEXT },
+            { id: "materialCode", label: "Kod materiału", type: DATA_TYPES.TEXT },
+            { id: "sku", label: "SKU", type: DATA_TYPES.TEXT },
+            { id: "stockLevel", label: "Stan zapasu", type: DATA_TYPES.NUMBER },
+            { id: "stockMode", label: "Znaczenie stanu", type: DATA_TYPES.TEXT },
+            { id: "date", label: "Data", type: DATA_TYPES.DATE },
+            { id: "unit", label: "Jednostka", type: DATA_TYPES.TEXT },
+            { id: "leadTimeDays", label: "Lead time (dni)", type: DATA_TYPES.NUMBER },
+            { id: "minimumOrderQuantity", label: "MOQ", type: DATA_TYPES.NUMBER },
+            { id: "orderMultiple", label: "Krotność zamówienia", type: DATA_TYPES.NUMBER },
+            { id: "safetyStock", label: "Safety stock", type: DATA_TYPES.NUMBER },
+            { id: "openOrders", label: "Otwarte zamówienia", type: DATA_TYPES.NUMBER },
+            { id: "supplier", label: "Dostawca", type: DATA_TYPES.TEXT }
+        ];
+    }
+
+    function openStockEditor(options = {}) {
+        dom.unlockSection("dataLab");
+        dom.activateSection("dataLab");
+        switchTab("stock");
+        const target = el("workspaceManualStockMaterial");
+        if (options.material && target) target.value = options.material;
+        global.setTimeout(() => target?.focus(), 0);
+    }
+
+    function renderMaterialSuggestions() {
+        const list = el("workspaceMaterialSuggestions");
+        if (!list) return;
+        const materials = [...new Set(rows().map((row) => cleanText(row.material)).filter(Boolean))]
+            .sort((left, right) => left.localeCompare(right, "pl"));
+        list.replaceChildren(...materials.map((material) => {
+            const option = document.createElement("option");
+            option.value = material;
+            return option;
+        }));
+    }
+
+    function nonNegativeInput(id, label) {
+        const raw = el(id)?.value ?? "";
+        if (String(raw).trim() === "") return null;
+        const value = parseNumber(raw);
+        if (value === null || !Number.isFinite(value) || value < 0) throw new Error(`${label} musi być liczbą nieujemną.`);
+        return value;
+    }
+
+    function addManualStockEntry() {
+        const material = cleanText(el("workspaceManualStockMaterial")?.value);
+        const materialCode = cleanText(el("workspaceManualStockMaterialCode")?.value) || null;
+        const sku = cleanText(el("workspaceManualStockSku")?.value) || null;
+        const stockLevel = nonNegativeInput("workspaceManualStockValue", "Stan zapasu");
+        const stockMode = el("workspaceManualStockMode")?.value === "opening" ? "opening" : "snapshot";
+        const parsedDate = parseDate(el("workspaceManualStockDate")?.value || new Date(), { allowExcelSerial: true, allowNumericStringExcelSerial: true });
+        if (!material) throw new Error("Podaj materiał.");
+        if (stockLevel === null) throw new Error("Podaj stan zapasu.");
+        if (!parsedDate) throw new Error(stockMode === "opening" ? "Stan początkowy wymaga prawidłowej daty stanu." : "Podaj prawidłową datę stanu.");
+        const id = manualStockEditingId || createId("stock-manual");
+        const entry = {
+            id,
+            material,
+            materialCode,
+            sku,
+            stockLevel,
+            stockMode,
+            date: toISODate(parsedDate),
+            unit: cleanText(el("workspaceManualStockUnit")?.value) || null,
+            leadTimeDays: nonNegativeInput("workspaceManualStockLeadTime", "Lead time"),
+            minimumOrderQuantity: nonNegativeInput("workspaceManualStockMoq", "MOQ"),
+            orderMultiple: nonNegativeInput("workspaceManualStockMultiple", "Krotność zamówienia"),
+            safetyStock: nonNegativeInput("workspaceManualStockSafety", "Safety stock"),
+            openOrders: nonNegativeInput("workspaceManualStockOpenOrders", "Otwarte zamówienia"),
+            supplier: cleanText(el("workspaceManualStockSupplier")?.value) || null,
+            sourceFile: "Wpis ręczny",
+            sourceSheet: null,
+            sourceRow: null,
+            manual: true,
+            updatedAt: new Date().toISOString()
+        };
+        const next = manualStockEditingId
+            ? stockRows().map((row) => row.id === manualStockEditingId ? entry : row)
+            : [...stockRows(), entry];
+        state.setStockDataset(next, stockFieldDefinitions());
+        resetManualStockForm();
+        renderStockTable();
+        scheduleAutosave();
+        scheduleAnalysisRefresh();
+        dom.showSuccess(`Zapisano dane decyzyjne dla materiału „${material}”.`, "Ręczne uzupełnienie");
+        return entry;
+    }
+
+    function resetManualStockForm() {
+        manualStockEditingId = null;
+        ["workspaceManualStockId", "workspaceManualStockMaterial", "workspaceManualStockMaterialCode", "workspaceManualStockSku", "workspaceManualStockValue", "workspaceManualStockUnit", "workspaceManualStockLeadTime", "workspaceManualStockMoq", "workspaceManualStockMultiple", "workspaceManualStockSafety", "workspaceManualStockOpenOrders", "workspaceManualStockSupplier"].forEach((id) => { if (el(id)) el(id).value = ""; });
+        if (el("workspaceManualStockMode")) el("workspaceManualStockMode").value = "snapshot";
+        if (el("workspaceManualStockDate")) el("workspaceManualStockDate").value = toISODate(new Date());
+        if (el("workspaceSaveManualStockButton")) el("workspaceSaveManualStockButton").textContent = "Dodaj wpis";
+        if (el("workspaceCancelManualStockButton")) el("workspaceCancelManualStockButton").hidden = true;
+    }
+
+    function editManualStockEntry(id) {
+        const row = stockRows().find((item) => item.id === id);
+        if (!row) return;
+        manualStockEditingId = id;
+        const values = {
+            workspaceManualStockId: row.id,
+            workspaceManualStockMaterial: row.material,
+            workspaceManualStockMaterialCode: row.materialCode,
+            workspaceManualStockSku: row.sku,
+            workspaceManualStockValue: row.stockLevel,
+            workspaceManualStockMode: row.stockMode || "snapshot",
+            workspaceManualStockDate: row.date,
+            workspaceManualStockUnit: row.unit,
+            workspaceManualStockLeadTime: row.leadTimeDays,
+            workspaceManualStockMoq: row.minimumOrderQuantity,
+            workspaceManualStockMultiple: row.orderMultiple,
+            workspaceManualStockSafety: row.safetyStock,
+            workspaceManualStockOpenOrders: row.openOrders,
+            workspaceManualStockSupplier: row.supplier
+        };
+        Object.entries(values).forEach(([idKey, value]) => { if (el(idKey)) el(idKey).value = value ?? ""; });
+        if (el("workspaceSaveManualStockButton")) el("workspaceSaveManualStockButton").textContent = "Zapisz zmiany";
+        if (el("workspaceCancelManualStockButton")) el("workspaceCancelManualStockButton").hidden = false;
+        el("workspaceManualStockMaterial")?.focus();
+    }
+
+    function deleteStockEntry(id) {
+        const row = stockRows().find((item) => item.id === id);
+        if (!row) return;
+        if (!global.confirm(`Usunąć dane zapasu dla „${row.material}”?`)) return;
+        state.setStockDataset(stockRows().filter((item) => item.id !== id), stockFieldDefinitions());
+        if (manualStockEditingId === id) resetManualStockForm();
+        renderStockTable();
+        scheduleAutosave();
+        scheduleAnalysisRefresh();
+    }
+
+    function handleStockTableAction(event) {
+        const button = event.target.closest("button[data-stock-action]");
+        if (!button) return;
+        if (button.dataset.stockAction === "edit") editManualStockEntry(button.dataset.stockId);
+        if (button.dataset.stockAction === "delete") deleteStockEntry(button.dataset.stockId);
     }
 
     async function handleStockFile(event) {
@@ -1454,18 +1627,7 @@
             };
         }).filter(Boolean);
         if (!normalized.length) throw new Error("Nie znaleziono poprawnych snapshotów zapasu.");
-        state.setStockDataset(normalized, [
-            { id: "material", label: "Materiał", type: DATA_TYPES.TEXT },
-            { id: "stockLevel", label: "Stan zapasu", type: DATA_TYPES.NUMBER },
-            { id: "date", label: "Data", type: DATA_TYPES.DATE },
-            { id: "unit", label: "Jednostka", type: DATA_TYPES.TEXT },
-            { id: "leadTimeDays", label: "Lead time (dni)", type: DATA_TYPES.NUMBER },
-            { id: "minimumOrderQuantity", label: "MOQ", type: DATA_TYPES.NUMBER },
-            { id: "orderMultiple", label: "Krotność zamówienia", type: DATA_TYPES.NUMBER },
-            { id: "safetyStock", label: "Safety stock", type: DATA_TYPES.NUMBER },
-            { id: "openOrders", label: "Otwarte zamówienia", type: DATA_TYPES.NUMBER },
-            { id: "supplier", label: "Dostawca", type: DATA_TYPES.TEXT }
-        ]);
+state.setStockDataset(normalized, stockFieldDefinitions());
         const suffix = rejected.length ? ` Pominięto ${rejected.length} błędnych wierszy (${rejected.slice(0, 8).join(", ")}${rejected.length > 8 ? ", …" : ""}).` : "";
         setText("workspaceStockStatus", `Zapisano ${formatInteger(normalized.length)} poprawnych snapshotów zapasu.${suffix}`);
         renderStockTable(); scheduleAutosave(); scheduleAnalysisRefresh();
@@ -1476,18 +1638,29 @@
         if (!global.confirm("Usunąć osobną tabelę zapasów z projektu?")) return;
         state.setStockDataset([], []);
         stockImportBuffer = null;
+        resetManualStockForm();
         if (el("workspaceStockMapping")) el("workspaceStockMapping").hidden = true;
         setText("workspaceStockStatus", "Usunięto osobną tabelę zapasów. Analiza użyje pola zapasu z danych głównych, jeśli jest zmapowane.");
         renderStockTable(); scheduleAutosave(); scheduleAnalysisRefresh();
     }
 
     function renderStockTable() {
-        const body = el("workspaceStockBody"); if (!body) return; body.replaceChildren();
+        const body = el("workspaceStockBody");
+        if (!body) return;
+        renderMaterialSuggestions();
+        body.replaceChildren();
         stockRows().slice(0, 1000).forEach((row) => {
             const tr = document.createElement("tr");
+            const source = row.manual
+                ? "Wpis ręczny"
+                : [row.sourceFile, row.sourceSheet ? `arkusz ${row.sourceSheet}` : "", row.sourceRow ? `wiersz ${row.sourceRow}` : ""].filter(Boolean).join(" · ") || "—";
+            const identifier = [row.materialCode, row.sku].filter(Boolean).join(" / ") || "—";
+            const stockModeLabel = row.stockMode === "opening" ? "Stan początkowy" : "Aktualny snapshot";
             tr.innerHTML = [
                 `<td>${escapeHtml(row.material)}</td>`,
+                `<td>${escapeHtml(identifier)}</td>`,
                 `<td class="is-number">${formatNumber(row.stockLevel)}</td>`,
+                `<td>${escapeHtml(stockModeLabel)}</td>`,
                 `<td>${escapeHtml(row.date || "—")}</td>`,
                 `<td>${escapeHtml(row.unit || "—")}</td>`,
                 `<td class="is-number">${row.leadTimeDays == null ? "—" : formatNumber(row.leadTimeDays)}</td>`,
@@ -1496,11 +1669,15 @@
                 `<td class="is-number">${row.safetyStock == null ? "—" : formatNumber(row.safetyStock)}</td>`,
                 `<td class="is-number">${row.openOrders == null ? "—" : formatNumber(row.openOrders)}</td>`,
                 `<td>${escapeHtml(row.supplier || "—")}</td>`,
-                `<td>${escapeHtml(row.sourceFile || "—")}</td>`
+                `<td>${escapeHtml(source)}</td>`,
+                `<td><div class="button-group"><button class="button button-ghost button-small" type="button" data-stock-action="edit" data-stock-id="${escapeHtml(row.id)}">Edytuj</button><button class="button button-ghost button-small" type="button" data-stock-action="delete" data-stock-id="${escapeHtml(row.id)}">Usuń</button></div></td>`
             ].join("");
             body.appendChild(tr);
         });
-        if (!stockRows().length) body.innerHTML = '<tr><td colspan="11">Nie wczytano osobnej tabeli zapasów.</td></tr>';
+        if (!stockRows().length) body.innerHTML = '<tr><td colspan="14">Nie wczytano ani nie wpisano danych zapasów. Użyj formularza powyżej.</td></tr>';
+        setText("workspaceStockStatus", stockRows().length
+            ? `Dostępne wpisy decyzyjne: ${formatInteger(stockRows().length)}. Dla materiału używany jest najnowszy wpis według daty.`
+            : "Nie wczytano ani nie wpisano danych zapasów.");
     }
 
     /* ---------------- Projects / persistence ---------------- */
@@ -1516,7 +1693,7 @@
     function serializeWorkspace() {
         return {
             schema: "materials-analytics-workspace",
-            schemaVersion: 4,
+            schemaVersion: 5,
             appVersion: PMA.constants.APP.version,
             project: { id: projectId, name: cleanText(el("workspaceProjectName")?.value) || "Nowy projekt", createdAt: projectCreatedAt },
             import: {
@@ -1527,11 +1704,12 @@
                 headerRowIndex: state.get("import.headerRowIndex", 0),
                 sourceRowNumbers: clonePlain(state.get("import.sourceRowNumbers", [])),
                 rowProvenance: clonePlain(state.get("import.rowProvenance", [])),
-                sheetProvenance: clonePlain(state.get("import.sheetProvenance", {}))
+                sheetProvenance: clonePlain(state.get("import.sheetProvenance", {})),
+                dataModel: clonePlain(state.get("import.dataModel", {}))
             },
             mapping: clonePlain(state.get("mapping", {})),
             dataset: {
-                normalizedRows: clonePlain(rows()), invalidRows: clonePlain(invalidRows()), duplicateRows: clonePlain(duplicateRows()), fields: clonePlain(fields()), stockRows: clonePlain(stockRows()), stockFields: clonePlain(state.get("dataset.stockFields", [])), calculatedColumns: clonePlain(calculatedColumns()), transformationSteps: clonePlain(transformationSteps())
+                normalizedRows: clonePlain(rows()), invalidRows: clonePlain(invalidRows()), duplicateRows: clonePlain(duplicateRows()), fields: clonePlain(fields()), stockRows: clonePlain(stockRows()), stockFields: clonePlain(state.get("dataset.stockFields", [])), receiptRows: clonePlain(state.get("dataset.receiptRows", [])), orderRows: clonePlain(state.get("dataset.orderRows", [])), materialMasterRows: clonePlain(state.get("dataset.materialMasterRows", [])), modelJoinAudit: clonePlain(state.get("dataset.modelJoinAudit", null)), calculatedColumns: clonePlain(calculatedColumns()), transformationSteps: clonePlain(transformationSteps())
             },
             filters: clonePlain(state.get("filters", {})),
             analysis: clonePlain(state.get("analysis", {})),
@@ -1633,7 +1811,7 @@
     function restoreWorkspace(payload) {
         if (payload?.schema !== "materials-analytics-workspace" || !Array.isArray(payload.dataset?.normalizedRows) || !Array.isArray(payload.dataset?.fields)) throw new Error("Plik nie jest zgodnym workspace Materials Analytics.");
         const version = Number(payload.schemaVersion || 1);
-        if (!Number.isInteger(version) || version < 1 || version > 4) throw new Error(`Nieobsługiwana wersja schematu workspace: ${payload.schemaVersion}.`);
+        if (!Number.isInteger(version) || version < 1 || version > 5) throw new Error(`Nieobsługiwana wersja schematu workspace: ${payload.schemaVersion}.`);
 
         const restoredFields = clonePlain(payload.dataset.fields);
         const fieldIds = new Set();
@@ -1672,6 +1850,12 @@
         state.setCalculatedColumns(restoredColumns);
         state.setNormalizedDataset({ normalizedRows: restoredRows, invalidRows: payload.dataset.invalidRows || [], duplicateRows: payload.dataset.duplicateRows || [], fields: restoredFields, statistics: calculateStatistics(restoredRows) });
         state.setStockDataset(payload.dataset.stockRows || [], payload.dataset.stockFields || []);
+        state.setAncillaryDatasets({
+            receiptRows: payload.dataset.receiptRows || [],
+            orderRows: payload.dataset.orderRows || [],
+            materialMasterRows: payload.dataset.materialMasterRows || [],
+            modelJoinAudit: payload.dataset.modelJoinAudit || null
+        });
         state.setTransformationSteps(payload.dataset.transformationSteps || []);
         if (payload.mapping?.values) state.setMapping(payload.mapping.values, { confidence: payload.mapping.confidence || {}, origins: payload.mapping.origins || {} });
         if (payload.filters) state.setFilters(payload.filters);
@@ -1687,6 +1871,7 @@
             importState.sourceRowNumbers = clonePlain(payload.import.sourceRowNumbers || []);
             importState.rowProvenance = clonePlain(payload.import.rowProvenance || []);
             importState.sheetProvenance = clonePlain(payload.import.sheetProvenance || {});
+            if (payload.import.dataModel) state.setWorkbookDataModel(clonePlain(payload.import.dataModel));
         }
         viewMode = payload.editor?.viewMode || "source";
         filters.splice(0, filters.length, ...(payload.editor?.filters || []));
@@ -1716,6 +1901,12 @@
             const errors = [...invalidRows(), ...duplicateRows()].map((record) => ({ Wiersz: record.sourceRow, Błędy: (record.errorMessages || []).join("; "), ...record.sourceValues }));
             global.XLSX.utils.book_append_sheet(workbook, global.XLSX.utils.json_to_sheet(errors.length ? errors : [{ Informacja: "Brak błędów" }]), "Błędy");
             global.XLSX.utils.book_append_sheet(workbook, global.XLSX.utils.json_to_sheet(stockRows().length ? stockRows() : [{ Informacja: "Brak osobnej tabeli zapasów" }]), "Zapasy");
+            const receiptRows = state.get("dataset.receiptRows", []);
+            const orderRows = state.get("dataset.orderRows", []);
+            const masterRows = state.get("dataset.materialMasterRows", []);
+            if (receiptRows.length) global.XLSX.utils.book_append_sheet(workbook, global.XLSX.utils.json_to_sheet(receiptRows), "Przyjęcia");
+            if (orderRows.length) global.XLSX.utils.book_append_sheet(workbook, global.XLSX.utils.json_to_sheet(orderRows), "Otwarte zamówienia");
+            if (masterRows.length) global.XLSX.utils.book_append_sheet(workbook, global.XLSX.utils.json_to_sheet(masterRows), "Kartoteka materiałów");
             const pivotRows = state.get("pivot.rows", []);
             if (pivotRows.length) global.XLSX.utils.book_append_sheet(workbook, global.XLSX.utils.json_to_sheet(pivotRows), "Pivot");
             const metadata = [
@@ -1786,6 +1977,7 @@
     function updateCommandButtons() {
         if (el("workspaceUndoButton")) el("workspaceUndoButton").disabled = !undoStack.length;
         if (el("workspaceRedoButton")) el("workspaceRedoButton").disabled = !redoStack.length;
+        if (el("workspaceEditCellButton")) el("workspaceEditCellButton").disabled = !activeCell;
         updateDeleteRowsButton();
     }
 
@@ -1875,6 +2067,11 @@
         initialize,
         destroy,
         refresh: refreshAll,
+        prepareRawWorkspace,
+        openRawWorkspace,
+        openStockEditor,
+        addManualStockEntry,
+        editActiveCell,
         undo,
         redo,
         exportWorkbook,

@@ -8,7 +8,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Materials Analytics 1.5.0</title>
+    <title>Materials Analytics 1.7.1</title>
     <script>
         (function configureFreshAssets(global, document) {
             "use strict";
@@ -95,7 +95,7 @@
         <button class="workflow-step" type="button" data-target-section="mappingSection" disabled>
             <span class="workflow-number">2</span>
             <span>
-                <strong>Mapowanie</strong>
+                <strong>Przygotowanie</strong>
                 <small id="mappingProgressText">Niedostępne</small>
             </span>
         </button>
@@ -141,7 +141,7 @@
                         <h2 id="importHeading">1. Import danych</h2>
                         <button class="help-button" type="button" data-help="import" aria-label="Pomoc dotycząca importu">?</button>
                     </div>
-                    <p>Wczytaj skoroszyt Excel, wybierz arkusz i sprawdź podgląd danych.</p>
+                    <p>Wczytaj skoroszyt Excel, przypisz role wielu arkuszom albo otwórz pojedynczy arkusz do analizy.</p>
                 </div>
                 <span id="importStatusBadge" class="status-badge status-neutral">Brak pliku</span>
             </div>
@@ -166,9 +166,59 @@
                 <div class="control-grid import-controls import-controls-extended">
                     <label><span>Arkusz</span><select id="sheetSelector"></select></label>
                     <label><span>Wiersz nagłówków</span><input id="headerRowNumber" type="number" min="1" value="1"></label>
+                    <button id="detectHeaderRowButton" class="button button-ghost align-end" type="button">Wykryj nagłówki</button>
                     <button id="reanalyzeSheetButton" class="button button-secondary align-end" type="button" disabled>Przeanalizuj ponownie</button>
                     <button id="combineSheetsButton" class="button button-secondary align-end" type="button" disabled>Połącz zgodne arkusze</button>
                 </div>
+
+                <section id="workbookIntelligencePanel" class="workbook-intelligence-panel" hidden aria-labelledby="workbookIntelligenceHeading">
+                    <div class="panel-heading compact">
+                        <div>
+                            <h3 id="workbookIntelligenceHeading">Rozpoznanie skoroszytu</h3>
+                            <p id="workbookIntelligenceSummary">Analiza przeznaczenia arkuszy.</p>
+                        </div>
+                        <button id="selectRecommendedSheetButton" class="button button-secondary button-small" type="button">Otwórz rekomendowany arkusz</button>
+                    </div>
+                    <div class="table-scroll">
+                        <table>
+                            <thead><tr><th>Arkusz</th><th>Rozpoznany typ</th><th>Wiersze</th><th>Kolumny</th><th>Nagłówki</th><th>Uwagi</th></tr></thead>
+                            <tbody id="workbookIntelligenceBody"></tbody>
+                        </table>
+                    </div>
+                    <p id="workbookRelationsSummary" class="analysis-tip"></p>
+                </section>
+
+                <section id="workbookModelPanel" class="workbook-model-panel" hidden aria-labelledby="workbookModelHeading">
+                    <div class="panel-heading">
+                        <div>
+                            <h3 id="workbookModelHeading">Model danych skoroszytu</h3>
+                            <p>Przypisz role wielu arkuszom. Zużycie, zapasy, przyjęcia, otwarte zamówienia i kartoteka materiałów będą używane jednocześnie.</p>
+                        </div>
+                        <div class="button-group">
+                            <button id="resetWorkbookModelButton" class="button button-ghost button-small" type="button">Wykryj ponownie</button>
+                            <button id="buildWorkbookModelButton" class="button button-primary button-small" type="button">Zbuduj model danych</button>
+                        </div>
+                    </div>
+                    <div class="control-grid workbook-model-controls">
+                        <label>
+                            <span>Klucz łączenia materiałów</span>
+                            <select id="workbookModelJoinStrategy">
+                                <option value="auto">Automatycznie — najlepsze pokrycie</option>
+                                <option value="materialCode">Kod materiału</option>
+                                <option value="sku">SKU</option>
+                                <option value="material">Nazwa materiału</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="table-scroll">
+                        <table>
+                            <thead><tr><th>Arkusz</th><th>Rola</th><th>Wiersz nagłówków</th><th>Wiersze</th><th>Kolumny</th><th>Mapowanie</th></tr></thead>
+                            <tbody id="workbookModelBody"></tbody>
+                        </table>
+                    </div>
+                    <div id="workbookModelMappings" class="workbook-model-mappings"></div>
+                    <p id="workbookModelAudit" class="analysis-tip">Przypisz role arkuszom, sprawdź mapowanie i wybierz „Zbuduj model danych”.</p>
+                </section>
 
                 <div class="table-panel">
                     <div class="panel-heading">
@@ -188,7 +238,7 @@
 
                 <div class="section-actions section-actions-end">
                     <button id="continueToMappingButton" class="button button-primary" type="button" disabled>
-                        Przejdź do mapowania
+                        Przygotuj tylko wybrany arkusz
                     </button>
                 </div>
             </div>
@@ -198,10 +248,10 @@
             <div class="section-heading">
                 <div>
                     <div class="heading-row">
-                        <h2 id="mappingHeading">2. Mapowanie i jakość danych</h2>
+                        <h2 id="mappingHeading">2. Przygotowanie i jakość danych</h2>
                         <button class="help-button" type="button" data-help="mapping" aria-label="Pomoc dotycząca mapowania">?</button>
                     </div>
-                    <p>Połącz kolumny źródłowe z polami systemowymi i sprawdź poprawność danych.</p>
+                    <p id="mappingDescription">Dla pojedynczego arkusza ustaw mapowanie. Dla modelu skoroszytu sprawdź gotowe połączenie i jakość danych.</p>
                 </div>
                 <span id="mappingStatusBadge" class="status-badge status-neutral">Niedostępne</span>
             </div>
@@ -211,11 +261,17 @@
             </div>
 
             <div id="mappingContent" hidden>
-                <div class="analysis-tip mapping-quantity-note">
-                    <strong>Zużycie / ilość wykorzystana</strong> oznacza ilość zużytą w każdym rekordzie i jest polem wymaganym.
-                    <strong>Aktualny stan zapasu</strong> to osobna, opcjonalna wartość pozostała w magazynie. Nie da się jej wyliczyć wyłącznie z zużycia bez stanu początkowego i przyjęć.
+                <div id="workbookModelMappingSummary" class="analysis-tip workbook-model-ready-summary" hidden>
+                    <strong>Mapowanie modelu skoroszytu jest już zakończone.</strong>
+                    <span id="workbookModelMappingSummaryText">Role i kolumny zostały przypisane w sekcji „Model danych skoroszytu”. Poniżej pozostaje wyłącznie kontrola jakości przed przetworzeniem.</span>
                 </div>
-                <div class="mapping-layout">
+
+                <div id="singleSheetMappingPanel">
+                    <div class="analysis-tip mapping-quantity-note">
+                        <strong>Zużycie / ilość wykorzystana</strong> oznacza ilość zużytą w każdym rekordzie i jest polem wymaganym.
+                        <strong>Aktualny stan zapasu</strong> to osobna, opcjonalna wartość pozostała w magazynie. Nie da się jej wyliczyć wyłącznie z zużycia bez stanu początkowego i przyjęć.
+                    </div>
+                    <div class="mapping-layout">
                     <aside class="source-columns-panel">
                         <div class="panel-heading compact">
                             <div>
@@ -239,8 +295,7 @@
                         <div id="mappingFieldsContainer" class="mapping-fields"></div>
                     </div>
                 </div>
-
-
+                </div>
 
                 <section class="validation-panel" aria-labelledby="validationHeading">
                     <div class="panel-heading compact">
@@ -470,6 +525,8 @@
                                     <th>Zakres kalendarzowy</th>
                                     <th>Gęstość danych</th>
                                     <th>Pokrycie (dni)</th>
+                                    <th>Rodzaj / data stanu</th>
+                                    <th>Źródło stanu</th>
                                     <th>Wiarygodność</th>
                                     <th>Ryzyko</th>
                                 </tr>
@@ -583,6 +640,7 @@
                     <div class="workspace-toolbar workspace-toolbar-primary">
                         <label class="search-field"><span>Szukaj</span><input id="workspaceSearchInput" type="search" placeholder="Szukaj we wszystkich widocznych kolumnach"></label>
                         <label><span>Widok kolumn</span><select id="workspaceViewMode"><option value="source" selected>Źródłowe + obliczeniowe</option><option value="analysis">Analityczne</option><option value="all">Wszystkie</option></select></label>
+                        <button id="workspaceEditCellButton" class="button button-secondary button-small" type="button" disabled>Edytuj komórkę</button>
                         <button id="workspaceUndoButton" class="button button-ghost button-small" type="button" disabled>Cofnij</button>
                         <button id="workspaceRedoButton" class="button button-ghost button-small" type="button" disabled>Ponów</button>
                         <button id="workspaceAddRowButton" class="button button-secondary button-small" type="button">Dodaj wiersz</button>
@@ -635,7 +693,7 @@
                     <div class="workspace-statusbar">
                         <span id="workspaceGridStatus">0 wierszy</span>
                         <span id="workspaceSelectionStatus">Brak zaznaczenia</span>
-                        <span>Dwuklik/Enter: edycja · Ctrl+C/Ctrl+V: kopiuj/wklej · Shift+klik: zakres</span>
+                        <span>Kliknij komórkę i zacznij pisać, użyj Enter/F2 albo dwukliku · Ctrl+C/Ctrl+V: kopiuj/wklej · Shift+klik: zakres</span>
                     </div>
                 </section>
 
@@ -700,8 +758,34 @@
                         <label><span>Dostawca</span><select id="workspaceStockSupplierField"></select></label>
                         <button id="workspaceApplyStockMappingButton" class="button button-primary align-end" type="button">Zastosuj mapowanie</button>
                     </div>
-                    <p id="workspaceStockStatus" class="analysis-tip">Nie wczytano osobnej tabeli zapasów.</p>
-                    <div class="table-scroll"><table><thead><tr><th>Materiał</th><th>Stan</th><th>Data</th><th>Jednostka</th><th>Lead time</th><th>MOQ</th><th>Krotność</th><th>Safety stock</th><th>Otwarte zamówienia</th><th>Dostawca</th><th>Źródło</th></tr></thead><tbody id="workspaceStockBody"></tbody></table></div>
+                    <section class="workspace-manual-stock panel-card" aria-labelledby="manualStockHeading">
+                        <div class="panel-heading compact">
+                            <div><h3 id="manualStockHeading">Ręczne uzupełnienie danych decyzyjnych</h3><p>Użyj, gdy plik nie zawiera stanu zapasu lub parametrów zamówienia. Każdy wpis dotyczy jednego materiału i może być później edytowany.</p></div>
+                        </div>
+                        <input id="workspaceManualStockId" type="hidden">
+                        <datalist id="workspaceMaterialSuggestions"></datalist>
+                        <div class="control-grid manual-stock-grid">
+                            <label><span>Materiał *</span><input id="workspaceManualStockMaterial" list="workspaceMaterialSuggestions" type="text" placeholder="Nazwa materiału"></label>
+                            <label><span>Kod materiału</span><input id="workspaceManualStockMaterialCode" type="text" placeholder="np. MAT-001"></label>
+                            <label><span>SKU</span><input id="workspaceManualStockSku" type="text" placeholder="opcjonalnie"></label>
+                            <label><span>Stan zapasu *</span><input id="workspaceManualStockValue" type="number" min="0" step="any" placeholder="0"></label>
+                            <label><span>Znaczenie stanu *</span><select id="workspaceManualStockMode"><option value="snapshot">Aktualny snapshot</option><option value="opening">Stan początkowy</option></select></label>
+                            <label><span>Data stanu *</span><input id="workspaceManualStockDate" type="date"></label>
+                            <label><span>Jednostka</span><input id="workspaceManualStockUnit" type="text" placeholder="szt., kg, rolka"></label>
+                            <label><span>Lead time (dni)</span><input id="workspaceManualStockLeadTime" type="number" min="0" step="1"></label>
+                            <label><span>MOQ</span><input id="workspaceManualStockMoq" type="number" min="0" step="any"></label>
+                            <label><span>Krotność zamówienia</span><input id="workspaceManualStockMultiple" type="number" min="0" step="any"></label>
+                            <label><span>Safety stock</span><input id="workspaceManualStockSafety" type="number" min="0" step="any"></label>
+                            <label><span>Otwarte zamówienia</span><input id="workspaceManualStockOpenOrders" type="number" min="0" step="any"></label>
+                            <label><span>Dostawca</span><input id="workspaceManualStockSupplier" type="text"></label>
+                        </div>
+                        <div class="section-actions section-actions-end">
+                            <button id="workspaceCancelManualStockButton" class="button button-ghost button-small" type="button" hidden>Anuluj edycję</button>
+                            <button id="workspaceSaveManualStockButton" class="button button-primary button-small" type="button">Dodaj wpis</button>
+                        </div>
+                    </section>
+                    <p id="workspaceStockStatus" class="analysis-tip">Nie wczytano ani nie wpisano danych zapasów.</p>
+                    <div class="table-scroll"><table><thead><tr><th>Materiał</th><th>Kod / SKU</th><th>Stan</th><th>Rodzaj stanu</th><th>Data</th><th>Jednostka</th><th>Lead time</th><th>MOQ</th><th>Krotność</th><th>Safety stock</th><th>Otwarte zamówienia</th><th>Dostawca</th><th>Źródło</th><th>Akcje</th></tr></thead><tbody id="workspaceStockBody"></tbody></table></div>
                 </section>
 
                 <section class="workspace-view" data-workspace-view="workspace" hidden>
@@ -769,9 +853,14 @@
                             <span>Główny wymiar</span>
                             <select id="smartPrimaryDimensionSelect"><option value="">Automatycznie</option></select>
                         </label>
-                        <label class="checkbox-label smart-duckdb-toggle">
-                            <input id="smartAnalyticsUseDuckDb" type="checkbox" checked>
-                            <span>Użyj lokalnego DuckDB-WASM do tabel przestawnych</span>
+                        <label>
+                            <span>Silnik tabel przestawnych</span>
+                            <select id="smartAnalyticsSqlMode">
+                                <option value="auto" selected>Automatycznie — zalecane</option>
+                                <option value="duckdb">Zawsze lokalny DuckDB-WASM</option>
+                                <option value="javascript">Tylko JavaScript</option>
+                            </select>
+                            <small>DuckDB działa wyłącznie na tym laptopie. Tryb automatyczny używa go przy większych lub bardziej złożonych zestawieniach i bezpiecznie wraca do JavaScript.</small>
                         </label>
                     </div>
                     <div class="section-actions section-actions-end">
@@ -801,6 +890,7 @@
                     <button type="button" data-smart-tab="correlations">Zależności</button>
                     <button type="button" data-smart-tab="recommendations">Tabele i wykresy</button>
                     <button type="button" data-smart-tab="report">Raport</button>
+                    <button type="button" data-smart-tab="verification">Weryfikacja</button>
                 </nav>
 
                 <section data-smart-view="overview" class="smart-view">
@@ -813,13 +903,19 @@
                             <h3>Najważniejsze wnioski</h3>
                             <div id="smartInsightsContainer" class="insight-list"></div>
                         </article>
+                        <article class="panel-card smart-domain-card">
+                            <h3>Analiza biznesowa</h3>
+                            <p id="smartDomainSummary">Typ danych nie został jeszcze rozpoznany.</p>
+                            <div id="smartDomainKpis" class="domain-kpi-grid"></div>
+                            <ul id="smartDomainWarnings" class="report-list"></ul>
+                        </article>
                     </div>
                 </section>
 
                 <section data-smart-view="schema" class="smart-view" hidden>
                     <div class="table-scroll result-table-scroll">
                         <table>
-                            <thead><tr><th>Kolumna</th><th>Typ</th><th>Rola</th><th>Pewność</th><th>Braki</th><th>Unikalne</th><th>Zakres / przykłady</th><th>Uzasadnienie</th></tr></thead>
+                            <thead><tr><th>Kolumna</th><th>Typ</th><th>Rola</th><th>Rola biznesowa</th><th>Pewność</th><th>Braki</th><th>Unikalne</th><th>Zakres / przykłady</th><th>Uzasadnienie</th></tr></thead>
                             <tbody id="smartSchemaTableBody"></tbody>
                         </table>
                     </div>
@@ -878,6 +974,18 @@
                 <section data-smart-view="report" class="smart-view" hidden>
                     <article id="smartReportContent" class="smart-report"></article>
                 </section>
+
+                <section data-smart-view="verification" class="smart-view" hidden>
+                    <div class="panel-heading compact">
+                        <div><h3>Ślad obliczeń i możliwość kontroli</h3><p>Każdy wynik pochodzi z jawnej metody statystycznej. Poniżej znajdują się identyfikator danych, parametry, liczebności prób i zastosowane progi.</p></div>
+                        <button id="smartExportAuditButton" class="button button-secondary button-small" type="button" disabled>Eksportuj audyt JSON</button>
+                    </div>
+                    <div id="smartVerificationSummary" class="summary-grid smart-verification-grid"></div>
+                    <div class="table-scroll result-table-scroll">
+                        <table><thead><tr><th>Moduł</th><th>Metoda</th><th>Dane wejściowe</th><th>Parametry / progi</th><th>Ograniczenia</th></tr></thead><tbody id="smartVerificationBody"></tbody></table>
+                    </div>
+                    <p class="analysis-tip">Weryfikacja oznacza odtwarzalność i jawność obliczeń. Nie oznacza, że każdy statystyczny związek jest przyczynowy ani że dane źródłowe są kompletne.</p>
+                </section>
             </div>
         </section>
 
@@ -885,7 +993,7 @@
 
     <footer class="app-footer">
         <span data-app-name>Pack Materials Analytics</span>
-        <span>Wersja <span data-app-version>1.5.0</span></span>
+        <span>Wersja <span data-app-version>1.7.1</span></span>
         <span>Dane są przetwarzane lokalnie w przeglądarce.</span>
     </footer>
 
@@ -916,6 +1024,7 @@
                 "src/dom.js",
                 "src/import-engine.js",
                 "src/mapping-engine.js",
+                "src/workbook-model-engine.js",
                 "src/value-normalization-engine.js",
                 "src/normalization-engine.js",
                 "src/pivot-engine.js",
@@ -929,6 +1038,9 @@
                 "src/analytics/analytics-core.js",
                 "src/analytics/schema-profiler.js",
                 "src/analytics/semantic-role-engine.js",
+                "src/analytics/workbook-intelligence-engine.js",
+                "src/analytics/domain-classifier.js",
+                "src/analytics/domain-analysis-engine.js",
                 "src/analytics/descriptive-statistics.js",
                 "src/analytics/data-quality-engine.js",
                 "src/analytics/outlier-engine.js",

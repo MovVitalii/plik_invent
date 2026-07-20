@@ -103,6 +103,20 @@ async function main() {
   await waitFor(() => window.document.querySelectorAll("#workspaceGridBody tr[data-row-id]").length === 4);
   check("Virtual grid renders four rows", window.document.querySelectorAll("#workspaceGridBody tr[data-row-id]").length === 4);
 
+  const editableMaterialField = PMA.state.get("dataset.fields").find((field) => field.source === "source" && field.sourceColumn === "Materiał");
+  const editedRowId = PMA.state.get("dataset.normalizedRows.3.id");
+  const editableCell = window.document.querySelector(`#workspaceGridBody td[data-row-id="${editedRowId}"][data-field-id="${editableMaterialField.id}"]`);
+  editableCell.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  check("Cell selection enables explicit edit action", window.document.getElementById("workspaceEditCellButton").disabled === false);
+  PMA.spreadsheetEngine.editActiveCell("Folia edytowana");
+  const cellEditor = window.document.querySelector(".workspace-cell-editor");
+  check("Cell editor opens for an editable source cell", Boolean(cellEditor));
+  cellEditor.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  await waitFor(() => PMA.state.get("dataset.normalizedRows.3.material") === "Folia edytowana");
+  check("Cell edit updates both source and mapped analytical value", PMA.state.get(`dataset.normalizedRows.3.${editableMaterialField.id}`) === "Folia edytowana" && PMA.state.get("dataset.normalizedRows.3.material") === "Folia edytowana");
+  PMA.spreadsheetEngine.undo();
+  check("Undo restores a direct cell edit", PMA.state.get("dataset.normalizedRows.3.material") === "Folia");
+
   const compiled = PMA.formulaEngine.compile("ROUND([Ilość] * [Cena], 2)", PMA.state.get("dataset.fields"));
   check("Formula engine evaluates column references", compiled.evaluate(PMA.state.get("dataset.normalizedRows.0")) === 25);
 
@@ -128,16 +142,30 @@ async function main() {
   PMA.spreadsheetEngine.redo();
   check("Redo reapplies transformed values", PMA.state.get("dataset.normalizedRows").filter((row) => row.material === "Taśma test").length === 3);
 
-  PMA.state.setStockDataset([{
-    id: "s1", material: "Taśma test", stockLevel: 100, date: "2026-01-31", unit: "szt.",
-    leadTimeDays: 120, minimumOrderQuantity: 50, orderMultiple: 20,
-    safetyStock: 10, openOrders: 5, supplier: "Supplier A"
-  }], []);
+  PMA.spreadsheetEngine.openStockEditor({ material: "Taśma test" });
+  window.document.getElementById("workspaceManualStockValue").value = "100";
+  window.document.getElementById("workspaceManualStockDate").value = "2026-01-31";
+  window.document.getElementById("workspaceManualStockUnit").value = "szt.";
+  window.document.getElementById("workspaceManualStockLeadTime").value = "120";
+  window.document.getElementById("workspaceManualStockMoq").value = "50";
+  window.document.getElementById("workspaceManualStockMultiple").value = "20";
+  window.document.getElementById("workspaceManualStockSafety").value = "10";
+  window.document.getElementById("workspaceManualStockOpenOrders").value = "5";
+  window.document.getElementById("workspaceManualStockSupplier").value = "Supplier A";
+  window.document.getElementById("workspaceSaveManualStockButton").click();
+  await waitFor(() => PMA.state.get("dataset.stockRows.length") === 1);
+  check("Manual decision-data form creates a stock snapshot", PMA.state.get("dataset.stockRows.0.manual") === true && PMA.state.get("dataset.stockRows.0.stockLevel") === 100);
+  const manualEditButton = window.document.querySelector('#workspaceStockBody button[data-stock-action="edit"]');
+  manualEditButton.click();
+  window.document.getElementById("workspaceManualStockValue").value = "110";
+  window.document.getElementById("workspaceSaveManualStockButton").click();
+  await waitFor(() => PMA.state.get("dataset.stockRows.0.stockLevel") === 110);
+  check("Manual decision-data snapshot can be edited", PMA.state.get("dataset.stockRows.0.stockLevel") === 110 && PMA.state.get("dataset.stockRows.length") === 1);
   PMA.decisionEngine.refresh();
   check("Separate stock snapshot activates stock analytics", window.document.getElementById("decisionStockNotice").hidden === true);
   const planned = PMA.decisionEngine.getForecastRows("Zima", PMA.state.get("dataset.normalizedRows")).find((row) => row.material === "Taśma test");
   check("Planning horizon respects lead time", planned?.planningDays === 120);
-  check("Open orders reduce required order", Math.abs(planned?.rawToOrder - (planned?.recommendedQuantity - 105)) < 1e-9);
+  check("Open orders reduce required order", Math.abs(planned?.rawToOrder - (planned?.recommendedQuantity - 115)) < 1e-9);
   check("Order quantity respects package multiple", planned?.toOrder % 20 === 0);
   check("Forecast carries supplier and unit metadata", planned?.supplier === "Supplier A" && planned?.unit === "szt.");
 
@@ -151,7 +179,7 @@ async function main() {
     pivots: [], recommendedCharts: [], insights: []
   });
   const workspace = PMA.spreadsheetEngine.serializeWorkspace();
-  check("Workspace schema v4 is generated", workspace.schemaVersion === 4 && workspace.dataset.stockRows.length === 1);
+  check("Workspace schema v5 is generated", workspace.schemaVersion === 5 && workspace.dataset.stockRows.length === 1);
   check("Workspace stores deterministic Smart Analytics result", workspace.smartAnalyticsResult?.execution?.deterministic === true);
   PMA.state.resetWorkspace({ preservePreferences: true, preserveMappingProfiles: true, preserveRecentFiles: true });
   PMA.dom.resetUI();

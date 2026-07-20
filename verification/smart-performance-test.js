@@ -8,7 +8,7 @@ const ROOT = path.resolve(__dirname, "..");
 const ANALYTICS = path.join(ROOT, "apps", "materials", "src", "analytics");
 const scripts = [
     "rules/analytics-rules.js",
-    "analytics-core.js", "schema-profiler.js", "semantic-role-engine.js", "descriptive-statistics.js",
+    "analytics-core.js", "schema-profiler.js", "semantic-role-engine.js", "domain-classifier.js", "domain-analysis-engine.js", "descriptive-statistics.js",
     "data-quality-engine.js", "outlier-engine.js", "trend-engine.js", "period-comparison-engine.js",
     "correlation-engine.js", "confidence-engine.js", "pivot-recommender.js", "chart-recommender.js",
     "insight-engine.js", "report-generator.js", "analytics-orchestrator.js"

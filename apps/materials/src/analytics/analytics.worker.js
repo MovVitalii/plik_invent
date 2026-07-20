@@ -7,6 +7,8 @@ importScripts(
     "analytics-core.js",
     "schema-profiler.js",
     "semantic-role-engine.js",
+    "domain-classifier.js",
+    "domain-analysis-engine.js",
     "descriptive-statistics.js",
     "data-quality-engine.js",
     "outlier-engine.js",
